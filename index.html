@@ -1,0 +1,3402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markan AI - Persistent Engine</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Outfit:wght@300;400;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+	 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+	 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #020617;
+            --accent-primary: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --text-high: #f1f5f9;
+            --panel-glass: rgba(15, 23, 42, 0.85);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --code-bg: #0f172a;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            font-family: 'Outfit', sans-serif; 
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); 
+            color: var(--text-high); 
+            overflow: hidden; 
+        }
+
+        #falling-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden; z-index: 0; pointer-events: none;
+        }
+
+        .falling-m {
+            position: absolute;
+            width: 30px; height: 30px; background: var(--accent-primary);
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            display: flex; align-items: center; justify-content: center;
+            color: #000; font-family: 'Space Grotesk'; font-weight: 700; font-size: 0.8rem;
+            opacity: 0.4; box-shadow: 0 0 10px var(--accent-glow);
+            animation: fall linear forwards;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-100px) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+
+        .markan-logo {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            font-family: 'Space Grotesk'; font-weight: 700; letter-spacing: 2px;
+        }
+        .logo-icon {
+            width: 40px; height: 40px; background: var(--accent-primary);
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            display: flex; align-items: center; justify-content: center; color: #000; font-size: 1.2rem;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .markan-logo {
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            font-family: 'Space Grotesk'; font-weight: 700;
+        }
+
+        .logo-icon {
+            width: 65px; height: 65px; background: var(--accent-primary);
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            display: flex; align-items: center; justify-content: center;
+            color: #000; font-size: 2rem; box-shadow: 0 0 30px var(--accent-glow);
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        #auth-screen {
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 10;
+        }
+
+        .auth-card {
+            background: var(--panel-glass); backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px); border: 1px solid var(--border-glass);
+            padding: 50px 40px; border-radius: 40px; width: 100%;
+            max-width: 400px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative; overflow: hidden;
+        }
+
+        .scan-overlay {
+            position: absolute; top: -100%; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent, var(--accent-glow), transparent);
+            z-index: 5; pointer-events: none; display: none;
+        }
+
+        @keyframes scanning {
+            0% { top: -100%; }
+            100% { top: 100%; }
+        }
+
+        /* INPUTS & BUTTONS */
+        .input-group { margin-bottom: 25px; text-align: left; }
+        .input-group label { 
+            display: block; font-size: 0.7rem; font-weight: 700; color: var(--accent-primary);
+            letter-spacing: 2px; margin-bottom: 8px; text-transform: uppercase;
+        }
+        .input-group input {
+            width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass);
+            padding: 15px; border-radius: 15px; color: white; outline: none; box-sizing: border-box;
+            transition: 0.3s;
+        }
+        .input-group input:focus { border-color: var(--accent-primary); background: rgba(255,255,255,0.08); }
+
+        .auth-btn { 
+            width: 100%; padding: 16px; background: var(--accent-primary); color: #000; 
+            border: none; border-radius: 15px; font-weight: 700; cursor: pointer;
+            font-family: 'Space Grotesk'; letter-spacing: 1px; transition: 0.3s;
+        }
+        .auth-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+        #dashboard {
+            height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center;
+            background: transparent; position: relative; z-index: 10; overflow-y: auto; padding: 40px 0;
+        }
+
+        .module-grid { 
+            display: flex; flex-wrap: wrap; gap: 20px; width: 95%; max-width: 1200px; justify-content: center;
+        }
+
+        .module-card {
+            flex: 1 1 200px; max-width: 250px;
+            padding: 30px 15px; background: rgba(15, 23, 42, 0.7); 
+            backdrop-filter: blur(10px); border: 1px solid var(--border-glass); 
+            border-radius: 25px; text-align: center; cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .module-card:hover {
+            border-color: var(--accent-primary); background: rgba(56, 189, 248, 0.1);
+            transform: translateY(-10px); box-shadow: 0 10px 40px -10px var(--accent-glow);
+        }
+
+        .icon-box { width: 60px; height: 60px; margin: 0 auto 15px; background: rgba(255,255,255,0.03); border-radius: 18px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .module-card:hover .icon-box { background: var(--accent-primary); color: #000; }
+
+        .code-window {
+            width: 90%; max-width: 800px; border: 1px solid var(--border-glass);
+            border-radius: 15px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .code-header { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); }
+        .code-body { padding: 25px; font-family: 'Fira Code', monospace; font-size: 0.9rem; color: #94a3b8; text-align: left; line-height: 1.6; }
+
+        .links-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 600px; }
+        .link-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; text-decoration: none; color: white; display: flex; align-items: center; gap: 10px; transition: 0.2s; border: 1px solid transparent; }
+        .link-item:hover { background: rgba(56, 189, 248, 0.1); border-color: var(--accent-primary); transform: scale(1.02); }
+
+        .placeholder-screen { display: none; height: 100vh; background: transparent; flex-direction: column; align-items: center; justify-content: flex-start; position: relative; z-index: 10; padding-top: 40px; }
+        #ai-interface { display: none; height: 100vh; grid-template-columns: 280px 1fr; background: transparent; position: relative; z-index: 10; }
+        #history-sidebar { background: rgba(0,0,0,0.6); backdrop-filter: blur(15px); border-right: 1px solid var(--border-glass); display: flex; flex-direction: column; padding: 20px; }
+        .chat-container { display: flex; flex-direction: column; height: 100vh; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; border-bottom: 1px solid var(--border-glass); background: rgba(2, 6, 23, 0.5); }
+        #chat-history { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 40px; }
+        .msg { max-width: 80%; padding: 16px 22px; border-radius: 22px; line-height: 1.6; }
+        .msg-ai { align-self: flex-start; background: rgba(255,255,255,0.05); backdrop-filter: blur(5px); }
+        .msg-user { align-self: flex-end; background: var(--accent-primary); color: #000; font-weight: 500; }
+        .input-area { padding: 20px 40px; background: rgba(2, 6, 23, 0.5); }
+        .input-box { display: flex; background: rgba(255,255,255,0.07); border: 1px solid var(--border-glass); border-radius: 20px; padding: 12px 20px; gap: 15px; }
+        .chat-input { flex-grow: 1; background: transparent; border: none; color: white; outline: none; }
+#security-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(2, 6, 23, 0.9);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+}
+
+.security-card {
+    background: var(--panel-glass);
+    border: 1px solid var(--accent-primary);
+    padding: 40px;
+    border-radius: 30px;
+    text-align: center;
+    width: 350px;
+    box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.security-card i {
+    color: var(--accent-primary);
+    margin-bottom: 20px;
+}
+
+.security-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 12px;
+    border-radius: 10px;
+    color: white;
+    margin: 20px 0;
+    text-align: center;
+    outline: none;
+}
+
+.security-input:focus {
+    border-color: var(--accent-primary);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.cancel-btn {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+		 .link-card {
+    background: var(--panel-glass);
+    border: 1px solid var(--border-glass);
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+    font-size: 0.9rem;
+    color: var(--text-high);
+}
+.link-card:hover {
+    border-color: var(--accent-primary);
+    background: rgba(56, 189, 248, 0.1);
+    transform: translateY(-3px);
+}
+		 .back-hub-btn {
+    align-self: flex-start;
+    background: rgba(56, 189, 248, 0.05);
+    border: 1px solid var(--border-glass);
+    color: var(--accent-primary);
+    padding: 10px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    font-family: 'Space Grotesk';
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    backdrop-filter: blur(5px);
+}
+
+.back-hub-btn:hover {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 20px var(--accent-glow);
+    transform: translateX(-5px);
+    color: white;
+}
+
+.back-hub-btn i {
+    transition: transform 0.3s ease;
+}
+
+.back-hub-btn:hover i {
+    transform: translateX(-3px);
+}
+		 #link-voice-status {
+    font-family: 'Fira Code', monospace;
+    text-shadow: 0 0 10px #ff5f56;
+    background: rgba(255, 95, 86, 0.1);
+    padding: 5px 15px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 95, 86, 0.3);
+}
+.code-window.cyber-mode {
+    border: 2px solid #00d4ff !important; 
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+    
+    background: rgba(15, 23, 42, 0.3) !important; 
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+}
+
+.code-window.cyber-mode .code-header {
+    background: rgba(0, 212, 255, 0.1) !important;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.editor-cyber-navy {
+    background: transparent !important;
+    color: #ffffff !important;
+    text-shadow: 0 0 8px rgba(0, 212, 255, 0.8);
+    caret-color: #00d4ff;
+    width: 100%;
+    height: 100%;
+}
+
+.gutter-cyber {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-right: 1px solid rgba(0, 212, 255, 0.3);
+}
+.file-item-container {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.file-item-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 212, 255, 0.2);
+}
+
+.file-actions {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.file-item-container:hover .file-actions {
+    opacity: 1 !important;
+    pointer-events: auto;
+}
+		 
+.comm-search-engine {
+    width: 90%;
+    max-width: 600px;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--accent-primary);
+    border-radius: 50px;
+    padding: 8px 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.15);
+}
+
+.comm-search-engine input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: white;
+    font-family: 'Outfit';
+    outline: none;
+}
+
+.comm-main-glass {
+    width: 96vw;
+    max-width: 1400px;
+    height: 65vh;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 40px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.comm-glass-header {
+    padding: 25px 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.contact-scroll-area {
+    padding: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    overflow-y: auto;
+}
+
+.user-node-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-node-card:hover {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: var(--accent-primary);
+    transform: translateY(-5px);
+}
+
+.user-node-pfp {
+    width: 55px;
+    height: 55px;
+    border-radius: 18px;
+    background: var(--bg-deep);
+    border: 2px solid var(--accent-primary);
+    overflow: hidden;
+}
+
+.user-node-pfp img { width: 100%; height: 100%; object-fit: cover; }
+
+.node-username { font-weight: 700; display: block; letter-spacing: 1px; }
+.node-status { font-size: 0.7rem; opacity: 0.6; }
+
+.comm-modal-overlay {
+    display: none;
+    position: fixed;
+    top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.comm-modal-content {
+    background: var(--bg-deep);
+    border: 2px solid var(--accent-primary);
+    width: 380px;
+    padding: 40px;
+    border-radius: 40px;
+    text-align: center;
+    box-shadow: 0 0 50px var(--accent-glow);
+}
+
+.comm-action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.action-card-btn {
+    padding: 20px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    transition: 0.3s;
+}
+
+.msg-theme { background: var(--accent-primary); color: #000; }
+.call-theme { background: #10b981; color: #000; }
+.action-card-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+.comm-search-btn {
+    background: linear-gradient(135deg, var(--accent-primary), #0ea5e9);
+    color: #020617;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 30px;
+    font-family: 'Space Grotesk';
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comm-search-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(56, 189, 248, 0.6);
+    filter: brightness(1.2);
+}
+
+.comm-search-btn:active {
+    transform: translateY(-1px);
+}
+
+.comm-close-btn {
+    margin-top: 25px;
+    width: 100%;
+    background: rgba(239, 68, 68, 0.1); 
+    color: #f87171; 
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    padding: 14px;
+    border-radius: 18px;
+    font-family: 'Space Grotesk';
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+}
+
+.comm-close-btn:hover {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+    border-color: #ef4444;
+}
+.comm-close-btn {
+    margin-top: 25px;
+    width: 100%;
+    background: rgba(239, 68, 68, 0.1); 
+    color: #f87171; 
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    
+    padding: 14px;
+    border-radius: 18px;
+    font-family: 'Space Grotesk';
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+}
+
+.comm-close-btn:hover {
+    background: #ef4444; 
+    color: white;
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+    transform: translateY(-2px);
+}
+
+.comm-close-btn:active {
+    transform: translateY(0);
+}
+.call-overlay {
+    display: none; 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-deep);
+    /* This ensures it sits on top of the dashboard and modals */
+    z-index: 9999; 
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-container {
+    position: relative;
+    background: #0f172a;
+    overflow: hidden;
+}
+
+.main-video {
+    width: 100%;
+    height: 100%;
+}
+
+.main-video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mini-video {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    width: 240px;
+    height: 150px;
+    border-radius: 20px;
+    border: 2px solid var(--accent-primary);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    z-index: 2001;
+}
+
+.mini-video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-off-state {
+    position: absolute;
+    top:0; left:0; width:100%; height:100%;
+    background: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-primary);
+}
+
+.call-status-tag {
+    position: absolute;
+    top: 35px;
+    left: 40px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 12px 25px;
+    border-radius: 50px;
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    font-family: 'Fira Code';
+    font-size: 0.8rem;
+    z-index: 2001;
+}
+
+.call-controls {
+    position: absolute;
+    bottom: 50px;
+    display: flex;
+    gap: 25px;
+    padding: 20px 40px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    border-radius: 40px;
+    border: 1px solid var(--border-glass);
+    z-index: 2001;
+}
+
+.control-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s;
+}
+
+.control-btn:hover {
+    background: var(--accent-primary);
+    color: #000;
+}
+
+.control-btn.active-off {
+    background: #ef4444 !important;
+    color: white !important;
+}
+
+.control-btn.end-call {
+    background: #ef4444;
+    width: 80px; 
+    border-radius: 30px;
+}
+
+.control-btn.end-call:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+}
+
+.video-placeholder {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    opacity: 0.5;
+}
+		 /* Add to the bottom of your <style> section */
+#omega-btn {
+    background: transparent;
+    border: none;
+    color: var(--accent-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: 0.3s;
+}
+
+#omega-btn:hover {
+    filter: drop-shadow(0 0 8px var(--accent-glow));
+    transform: scale(1.1);
+}
+
+#omega-screen {
+    display: none; /* Initially hidden */
+    height: 100vh;
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    /* Uses your existing background variable */
+    background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+}
+		 /* Container for the falling elements within the Omega screen */
+#omega-falling-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1; /* Sits behind any content we add later */
+}
+
+/* Reusing your M design but optimized for the Omega screen */
+.omega-m {
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background: var(--accent-primary);
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-family: 'Space Grotesk';
+    font-weight: 700;
+    font-size: 0.9rem;
+    opacity: 0.3;
+    box-shadow: 0 0 15px var(--accent-glow);
+    animation: omegaFall linear forwards;
+}
+
+@keyframes omegaFall {
+    0% { transform: translateY(-100px) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.3; }
+    90% { opacity: 0.3; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+}
+		 /* Omega Menu Layout */
+#omega-menu-container {
+    position: relative;
+    z-index: 5;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+}
+
+.omega-big-btn {
+    width: 80%;
+    max-width: 600px;
+    padding: 40px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-glass);
+    border-radius: 30px;
+    color: var(--text-high);
+    font-family: 'Space Grotesk';
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.omega-big-btn:hover {
+    border-color: var(--accent-primary);
+    background: rgba(56, 189, 248, 0.1);
+    transform: scale(1.05);
+    box-shadow: 0 0 40px var(--accent-glow);
+}
+
+.omega-big-btn i {
+    color: var(--accent-primary);
+    transition: 0.3s;
+}
+
+/* Sub-page styling */
+.omega-sub-page {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 150;
+    background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+}
+
+.exit-sub-btn {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 12px 25px;
+    border-radius: 15px;
+    font-family: 'Space Grotesk';
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 200;
+}
+
+.exit-sub-btn:hover {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+		 /* Automated Exam Interface Styling */
+.omega-sub-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    z-index: 10;
+}
+
+.exam-control-panel {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glass);
+    padding: 50px;
+    border-radius: 40px;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Big Upload Button */
+#pdf-upload-zone {
+    width: 100%;
+    height: 180px;
+    border: 2px dashed var(--border-glass);
+    border-radius: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-bottom: 30px;
+}
+
+#pdf-upload-zone:hover {
+    border-color: var(--accent-primary);
+    background: rgba(56, 189, 248, 0.05);
+    box-shadow: 0 0 20px var(--accent-glow);
+}
+
+#pdf-upload-zone i {
+    font-size: 3rem;
+    color: var(--accent-primary);
+    margin-bottom: 15px;
+}
+
+/* Input Styles */
+.exam-input-group {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.exam-input-group label {
+    font-family: 'Space Grotesk';
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.exam-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 15px;
+    border-radius: 15px;
+    color: white;
+    font-family: 'Fira Code';
+    outline: none;
+    transition: 0.3s;
+}
+
+.exam-input:focus {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Big Generate Button */
+.generate-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--accent-primary), #0ea5e9);
+    color: #020617;
+    border: none;
+    border-radius: 15px;
+    font-family: 'Space Grotesk';
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: 0.3s;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.generate-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 30px var(--accent-glow);
+    filter: brightness(1.1);
+}
+		 .spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(56, 189, 248, 0.1);
+    border-top: 5px solid var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+		 .quiz-question {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-glass);
+}
+
+.question-text {
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: var(--accent-primary);
+}
+
+.option {
+    display: block;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+    border: 1px solid transparent;
+}
+
+.option:hover {
+    background: rgba(56, 189, 248, 0.1);
+}
+
+/* Radio button (the dot) styling */
+.option input[type="radio"] {
+    margin-right: 15px;
+    accent-color: var(--accent-primary);
+    transform: scale(1.2);
+}
+
+/* Correction Colors */
+.option.correct-choice { background: rgba(34, 197, 94, 0.2); border-color: #22c55e; color: #22c55e; }
+.option.wrong-choice { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; }
+.option.actual-answer { border: 1px dashed #38bdf8; color: #38bdf8; font-weight: bold; }
+
+.score-display {
+    font-size: 2rem;
+    font-family: 'Space Grotesk';
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    border-top: 2px solid var(--border-glass);
+}
+
+		 .help-btn {
+    margin-left: auto;
+    background: #ef4444;
+    color: white;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    transition: 0.3s;
+}
+
+.help-btn:hover {
+    transform: scale(1.2);
+    background: #f87171;
+}
+.explanation-box {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(56, 189, 248, 0.1);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 5px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+		 /* Visual Query Styling */
+.visual-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.big-camera-trigger {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.1);
+    border: 2px solid var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.4s;
+    margin-bottom: 20px;
+    box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.big-camera-trigger:hover {
+    transform: scale(1.1) rotate(5deg);
+    background: var(--accent-primary);
+    color: var(--bg-deep);
+}
+
+.visual-preview-area {
+    width: 100%;
+    min-height: 200px;
+    border-radius: 20px;
+    border: 1px dashed var(--border-glass);
+    margin: 20px 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.3);
+}
+
+#captured-image-preview {
+    max-width: 100%;
+    max-height: 400px;
+    display: none;
+}
+
+.visual-input-group {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.visual-query-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    padding: 15px;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Outfit';
+    outline: none;
+}
+
+		 
+    </style>
+</head>
+<body>
+
+    <div id="falling-container"></div>
+<div id="security-modal">
+    <div class="security-card">
+        <div class="logo-icon" style="width: 40px; height: 40px; margin: 0 auto 15px; font-size: 1rem;">M</div>
+        <h2 style="font-family:'Space Grotesk'; margin-bottom: 5px;">ENCRYPTED</h2>
+        <p id="modal-module-name" style="font-size: 0.6rem; opacity: 0.6; letter-spacing: 2px; color: var(--accent-primary);">AUTHENTICATION REQUIRED</p>
+        
+        <div class="input-group" style="margin-top: 20px;">
+            <label style="color: var(--accent-primary); font-size: 0.7rem;">Security Key</label>
+            <input type="password" id="modal-password-input" class="security-input" placeholder="••••••••" 
+                   onkeypress="if(event.key==='Enter') verifyModuleAccess()">
+        </div>
+        
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="closeSecurityModal()">CANCEL</button>
+            <button class="auth-btn" style="flex: 2; padding: 10px;" onclick="verifyModuleAccess()">DECRYPT</button>
+        </div>
+        <p id="modal-error" style="color: #ff5f56; font-size: 0.7rem; margin-top: 15px; display: none;">INVALID SECURITY KEY</p>
+    </div>
+</div>
+    <div id="auth-screen">
+    <div class="auth-card" id="auth-card">
+        <div class="scan-overlay" id="scan-bar"></div>
+
+        <div class="markan-logo" style="margin-bottom: 40px;">
+            <div class="logo-icon">M</div>
+            <div style="font-size: 1.8rem; letter-spacing: 4px; margin-top:10px;">MARKAN AI</div>
+            <p id="auth-subtitle" style="color:var(--accent-primary); font-size:0.6rem; letter-spacing:3px; opacity:0.7;">CORE NEURAL INTERFACE</p>
+        </div>
+
+        <div class="input-group">
+            <label>Access Identity</label>
+            <input type="text" id="auth-user" placeholder="Enter username">
+        </div>
+        <div class="input-group" style="margin-bottom: 30px;">
+            <label>Security Key</label>
+            <input type="password" id="auth-pass" placeholder="••••••••">
+        </div>
+
+        <button class="auth-btn" id="auth-submit-btn" onclick="handleAuth()">LOGIN TO CORE</button>
+
+        <div style="margin-top:25px; font-size:0.8rem; cursor:pointer; opacity:0.5" onclick="toggleAuthMode()">
+            <span id="toggle-text">New Intelligence? Initialize Account</span>
+        </div>
+    </div>
+</div>
+
+    <div id="dashboard">
+        <div class="markan-logo" style="margin-bottom: 10px;">
+            <div class="logo-icon" style="width: 50px; height: 50px; font-size: 1.5rem;">M</div>
+            <div style="font-size: 2rem;">MARKAN CORE</div>
+        </div>
+        <p style="opacity:0.5; font-size:0.8rem; margin-bottom:40px; letter-spacing: 1px;">DEVELOPED BY ABENEZER KETEMA</p>
+        
+        <div class="module-grid">
+            <div class="module-card" onclick="showModule('chatbot')">
+                <div class="icon-box"><i data-lucide="brain-circuit"></i></div>
+                <h3 style="font-family:'Space Grotesk'; font-size:1rem;">CHATBOT</h3>
+                <p style="font-size: 0.7rem; opacity: 0.5;">Physics Engine</p>
+            </div>
+            <div class="module-card" onclick="showModule('communication')">
+                <div class="icon-box"><i data-lucide="globe"></i></div>
+                <h3 style="font-family:'Space Grotesk'; font-size:1rem;">COMMUNICATION</h3>
+                <p style="font-size: 0.7rem; opacity: 0.5;">Peer Network</p>
+            </div>
+            <div class="module-card" onclick="showModule('cloud')">
+                <div class="icon-box"><i data-lucide="shield-check"></i></div>
+                <h3 style="font-family:'Space Grotesk'; font-size:1rem;">CLOUD STORAGE</h3>
+                <p style="font-size: 0.7rem; opacity: 0.5;">Secure Vault</p>
+            </div>
+            <div class="module-card" onclick="showModule('links')">
+                <div class="icon-box"><i data-lucide="external-link"></i></div>
+                <h3 style="font-family:'Space Grotesk'; font-size:1rem;">LINKS</h3>
+                <p style="font-size: 0.7rem; opacity: 0.5;">Resources</p>
+            </div>
+            <div class="module-card" onclick="showModule('code')">
+                <div class="icon-box"><i data-lucide="terminal"></i></div>
+                <h3 style="font-family:'Space Grotesk'; font-size:1rem;">CODE DISPLAY</h3>
+                <p style="font-size: 0.7rem; opacity: 0.5;">Syntax Viewer</p>
+            </div>
+			    <div class="module-card" onclick="showModule('profile')">
+                <div class="icon-box"><i data-lucide="user"></i></div>
+                <h3 style="font-family:'Space Grotesk'; font-size:1rem;">PROFILE</h3>
+                <p style="font-size: 0.7rem; opacity: 0.5;">Identity Matrix</p>
+            </div>
+        </div>
+        <button onclick="logout()" style="margin-top: 40px; background:transparent; border:none; color:rgba(255,255,255,0.3); cursor:pointer; font-size:0.7rem; letter-spacing:2px">DISCONNECT SESSION</button>
+    </div>
+
+    <div id="communication-screen" class="placeholder-screen" style="padding: 20px; flex-direction: column; justify-content: flex-start;">
+    
+    <div style="width: 100%; max-width: 1200px; display: flex; justify-content: flex-start; margin-bottom: 15px;">
+        <button onclick="backToHub()" class="back-hub-btn" style="margin: 0; background: rgba(255,255,255,0.05);">
+            <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+            <span>Markan Core</span>
+        </button>
+    </div>
+
+    <div class="comm-search-engine">
+        <i data-lucide="search" style="color: var(--accent-primary); width: 20px;"></i>
+        <input type="text" id="global-search" placeholder="Search for users or neural IDs..." onkeyup="filterContacts()">
+        <button class="comm-search-btn">SEARCH</button>
+    </div>
+
+    <div class="comm-main-glass">
+        <div class="comm-glass-header">
+            <h3 style="font-family: 'Space Grotesk'; margin: 0; letter-spacing: 3px;">ACTIVE NODES</h3>
+            <div class="network-status">
+                <div class="pulse-dot"></div>
+                <span style="font-size: 0.7rem; opacity: 0.8;">GLOBAL NETWORK: ONLINE</span>
+            </div>
+        </div>
+
+        <div id="contact-list-container" class="contact-scroll-area">
+            <div class="user-node-card" onclick="openUserInteractions('Markan_Admin', 'assets/pfp1.jpg')">
+                <div class="user-node-pfp">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Markan" alt="pfp">
+                </div>
+                <div class="user-node-info">
+                    <span class="node-username">MARKAN_ADMIN</span>
+                    <span class="node-status">Verified System Creator</span>
+                </div>
+                <div class="node-chevron">
+                    <i data-lucide="more-vertical"></i>
+                </div>
+            </div>
+            </div>
+    </div>
+</div>
+
+<div id="user-action-modal" class="comm-modal-overlay" onclick="closeCommModal(event)">
+    <div class="comm-modal-content" onclick="event.stopPropagation()">
+        
+        <div id="modal-user-pfp" class="modal-pfp-large" style="margin-bottom: 15px;">
+            </div>
+
+        <h2 id="modal-user-name" style="font-family: 'Space Grotesk'; margin-bottom: 5px; color: var(--text-high); letter-spacing: 2px;">
+            USERNAME
+        </h2>
+        
+        <p style="font-family: 'Outfit'; font-size: 0.8rem; color: var(--accent-primary); margin-bottom: 30px; opacity: 0.8;">
+            NEURAL IDENTITY VERIFIED
+        </p>
+        
+        <div class="comm-action-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            
+            <button class="action-card-btn msg-theme" onclick="initiateMessage()">
+                <i data-lucide="message-square" style="width: 28px; height: 28px;"></i>
+                <span style="font-size: 0.7rem; font-weight: 800; margin-top: 8px;">MESSAGE</span>
+            </button>
+            
+            <button class="action-card-btn call-theme" onclick="initiateCall()">
+                <i data-lucide="phone" style="width: 28px; height: 28px;"></i>
+                <span style="font-size: 0.7rem; font-weight: 800; margin-top: 8px;">VOICE CALL</span>
+            </button>
+            
+        </div>
+        
+        <button class="comm-close-btn" onclick="document.getElementById('user-action-modal').style.display='none'">
+            CLOSE
+        </button>
+
+    </div>
+</div>
+
+    <div id="cloud-screen" class="placeholder-screen">
+        <div style="width: 95%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <button onclick="backToHub()" class="back-hub-btn" style="margin-bottom: 0;">
+        <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+        <span>Markan Core Hub</span>
+    </button>
+    
+    <div style="text-align: right;">
+        <div style="font-size: 0.7rem; color: #00d4ff; margin-bottom: 5px; font-family: 'Fira Code'; letter-spacing: 1px;">CORE STORAGE: 512 MB</div>
+        <div style="width: 200px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; border: 1px solid rgba(0,212,255,0.3);">
+            <div id="storage-bar" style="width: 5%; height: 100%; background: #00d4ff; box-shadow: 0 0 10px #00d4ff; transition: 0.5s;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="code-window cyber-mode" style="width: 95%; max-width: 1200px; height: 75vh; display: flex; flex-direction: column;">
+    
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()" 
+         style="height: 120px; border: 2px dashed rgba(0, 212, 255, 0.4); margin: 20px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: rgba(0, 212, 255, 0.03); transition: 0.3s;">
+        <i data-lucide="upload-cloud" style="width: 32px; height: 32px; color: #00d4ff; margin-bottom: 10px;"></i>
+        <span style="color: #00d4ff; font-family: 'Fira Code'; font-size: 0.8rem; letter-spacing: 1px;">DRAG FILES HERE OR CLICK TO BROWSE</span>
+        <input type="file" id="file-input" multiple style="display: none;" onchange="handleVaultUpload(this.files)">
+    </div>
+
+    <div id="vault-grid" style="flex-grow: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; overflow-y: auto; align-content: start;">
+        </div>
+
+    <div style="padding: 10px 20px; background: rgba(0, 212, 255, 0.1); border-top: 1px solid rgba(0,212,255,0.2); display: flex; justify-content: space-between; align-items: center;">
+        <span id="file-count" style="font-size: 0.65rem; color: #00d4ff; font-family: 'Fira Code';">FILES: 0</span>
+        <span style="font-size: 0.65rem; color: #00d4ff; font-family: 'Fira Code';">ENCRYPTION: AES-256 ACTIVE</span>
+    </div>
+</div>
+    </div>
+
+    <div id="links-screen" class="placeholder-screen" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding:40px;">
+    <button onclick="backToHub()" class="back-hub-btn">
+    <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+    <span>Markan Core Hub</span>
+</button>
+    <div class="logo-icon" style="width: 50px; height: 50px; margin-bottom: 20px;">M</div>
+    <h2 style="font-family:'Space Grotesk'; color:var(--accent-primary); margin-bottom:5px;">GLOBAL COMMAND</h2>
+    <p style="font-size:0.7rem; opacity:0.6; letter-spacing:2px; margin-bottom:30px;">INTERNET GATEWAY ACTIVE</p>
+    
+    <div style="position:relative; margin-bottom:50px;">
+        <button onclick="startLinkVoice()" id="link-mic-btn" style="width:120px; height:120px; border-radius:50%; border:2px solid var(--accent-primary); background:rgba(56, 189, 248, 0.05); color:var(--accent-primary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.4s; box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);">
+            <i data-lucide="mic" style="width:40px; height:40px;"></i>
+        </button>
+        <div id="link-voice-status" style="display:none; position:absolute; bottom:-40px; width:250px; left:50%; transform:translateX(-50%); text-align:center; font-size:0.7rem; color:#ff5f56; font-weight:700; text-transform:uppercase;"></div>
+    </div>
+
+    <div style="width:100%; max-width:500px; display:flex; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:15px; padding:5px;">
+        <input type="text" id="manual-url" placeholder="Say 'Open wikipedia.org' or type here..." style="flex:1; background:transparent; border:none; padding:15px; color:white; outline:none; font-family:'Fira Code';">
+        <button onclick="processManualLink()" style="background:var(--accent-primary); border:none; padding:0 25px; border-radius:12px; cursor:pointer; font-weight:700; color:#000;">EXECUTE</button>
+    </div>
+</div>
+
+<div id="code-screen" class="placeholder-screen" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+    
+    <button onclick="backToHub()" class="back-hub-btn" style="margin: 0 0 20px 0;">
+        <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+        <span>Markan Core Hub</span>
+    </button>
+
+    <div class="code-window cyber-mode" style="width: 98%; max-width: 1400px; height: 85vh; display: flex; flex-direction: column; border-radius: 15px; overflow: hidden;">
+        <div class="code-header" style="padding: 15px 25px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <select id="language-select" onchange="updateSyntax()" style="background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.4); border-radius: 5px; font-family: 'Fira Code'; font-size: 0.7rem; padding: 4px; cursor: pointer; outline: none;">
+                        <option value="html">HTML</option>
+                        <option value="py">PYTHON</option>
+                        <option value="js">JAVASCRIPT</option>
+                        <option value="css">CSS</option>
+                        <option value="txt">TEXT</option>
+                    </select>
+                    <span id="file-indicator" style="font-family: 'Fira Code'; font-size: 0.75rem; color: #00d4ff; font-weight: bold; opacity: 0.9;">PROJECT.html</span>
+                </div>                
+                <button onclick="createNewProject()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:white; font-size:0.7rem; padding:8px 15px; border-radius:8px; cursor:pointer;">+ NEW PROJECT</button>
+                <button onclick="downloadFile()" style="background:rgba(0, 212, 255, 0.1); border:1px solid #00d4ff; color:#00d4ff; font-size:0.7rem; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: 600;">DOWNLOAD</button>
+                <button onclick="runCode()" style="background:#00d4ff; border:none; color:black; font-size:0.7rem; padding:8px 25px; border-radius:8px; cursor:pointer; font-weight:800; box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);">RUN</button>
+            </div>
+        </div>
+        
+        <div style="flex-grow: 1; display: flex;">
+            <div class="gutter-cyber" style="width: 50px; display: flex; flex-direction: column; padding-top: 20px; align-items: center; font-family: 'Fira Code'; font-size: 0.85rem; user-select: none;">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <textarea id="editor-textarea" class="editor-cyber-navy" spellcheck="false" 
+                style="flex-grow: 1; border: none; padding: 20px; font-family: 'Fira Code', monospace; font-size: 1.15rem; outline: none; resize: none; line-height: 1.6;" 
+                placeholder=""></textarea>
+        </div>
+    </div>
+
+    <button class="auth-btn" onclick="toggleIdeaBox(true)" style="margin-top: 15px; width: auto; padding: 12px 30px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent-primary); color: var(--accent-primary); font-size: 0.8rem;" id="text-to-code-btn">
+        <i data-lucide="terminal" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 8px;"></i>
+        TEXT TO CODE
+    </button>
+
+    <div id="text-to-code-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(2, 6, 23, 0.98); backdrop-filter:blur(20px); z-index:100; flex-direction:column; align-items:center; justify-content:center; padding:40px;">
+        <div style="width:100%; max-width:850px; animation: fadeIn 0.5s ease;">
+            <button onclick="toggleIdeaBox(false)" class="back-hub-btn" style="margin-bottom: 20px;">
+                <i data-lucide="arrow-left"></i> EXIT ARCHITECT
+            </button>
+            
+            <div id="input-phase">
+                <h2 style="font-family:'Space Grotesk'; letter-spacing:3px; color:var(--accent-primary);">NEURAL ARCHITECT</h2>
+                <textarea id="user-idea-input" placeholder="What should we build?" 
+                    style="width:100%; height:150px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:20px; padding:25px; color:white; font-family:'Outfit'; font-size:1rem; outline:none; margin-bottom:20px; resize:none;"></textarea>
+                
+                <div style="display:flex; gap:20px;">
+                    <button id="describe-btn" onclick="describeIdea()" class="auth-btn" style="flex:1;">DESCRIBE IDEA</button>
+                    <button id="create-btn" onclick="startcodingphase()" class="auth-btn" style="display:none; flex:1; background:#10b981;">CREATE CODE</button>
+                </div>
+
+                <div id="ai-explanation-box" style="margin-top:20px; padding:20px; border-radius:15px; background:rgba(56, 189, 248, 0.05); border:1px dashed var(--accent-primary); display:none;">
+                    <p id="ai-explanation-text" style="font-size:0.85rem; line-height:1.6; opacity:0.8; font-family:'Outfit';"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="neural-lab-layer" class="m-background" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background-color: var(--bg-deep); z-index:200; flex-direction:column; padding:30px; animation: slideUp 0.4s ease-out;">
+            <div style="width:100%; max-width:1100px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; position: relative; z-index: 10;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid var(--border-glass); padding-bottom:15px; backdrop-filter: blur(10px);">
+                    <div>
+                        <h3 style="font-family:'Space Grotesk'; color:var(--accent-primary); letter-spacing:4px; margin:0; text-shadow: 0 0 10px var(--accent-glow);">NEURAL_LAB_v1.0</h3>
+                        <span id="lab-status" style="font-size:0.6rem; color:#238636; font-family:'Fira Code'; text-transform: uppercase;">READY_FOR_STREAM</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button onclick="copyLabCode()" title="Copy Code" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-glass); color:white; padding:8px 12px; border-radius:10px; cursor:pointer; font-size:0.7rem;"><i data-lucide="copy" style="width:14px; height:14px;"></i></button>
+                        <button onclick="downloadLabCode()" title="Download" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-glass); color:white; padding:8px 12px; border-radius:10px; cursor:pointer; font-size:0.7rem;"><i data-lucide="download" style="width:14px; height:14px;"></i></button>
+                        <button onclick="runLabCode()" style="background:var(--accent-primary); border:none; color:black; padding:8px 20px; border-radius:10px; cursor:pointer; font-size:0.7rem; font-weight:800; font-family:'Space Grotesk';">RUN_STREAM</button>
+                        <div style="width:1px; height:20px; background:var(--border-glass); margin: 0 5px;"></div>
+                        <button onclick="closeLab()" style="background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; color:#ef4444; padding:8px 15px; border-radius:10px; cursor:pointer; font-size:0.7rem; font-family:'Space Grotesk';">EXIT</button>
+                    </div>
+                </div>
+
+                <div style="flex:1; background: var(--card-bg); border: 1px solid var(--border-glass); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; backdrop-filter: blur(15px); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);">
+                    <div style="background: rgba(56, 189, 248, 0.05); padding: 10px 20px; border-bottom: 1px solid var(--border-glass); display: flex; justify-content: space-between;">
+                        <span style="font-family: 'Fira Code'; font-size: 0.6rem; color: var(--accent-primary); opacity: 0.8;">SYNAPTIC_STREAM_ACTIVE</span>
+                        <span id="char-count" style="font-family: 'Fira Code'; font-size: 0.6rem; color: var(--accent-primary); opacity: 0.6;">0 CHARS</span>
+                    </div>
+                    <div id="lab-code-area" style="flex:1; padding:30px; font-family:'Fira Code'; font-size:0.95rem; color:#e2e8f0; overflow-y:auto; white-space:pre-wrap; line-height:1.7;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+	
+<div id="profile-screen" class="placeholder-screen" style="display: none; flex-direction: column; align-items: center; padding: 40px 20px;">
+    <div style="width: 100%; max-width: 500px; display: flex; justify-content: flex-start; margin-bottom: 20px;">
+        <button onclick="backToHub()" class="back-hub-btn">
+            <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+            <span>Markan Core Hub</span>
+        </button>
+    </div>
+
+    <div class="auth-card" style="max-width: 500px; width: 100%; border-color: var(--accent-primary); background: rgba(15, 23, 42, 0.95); position: relative; overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5);">
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);"></div>
+
+        <div style="position: relative; width: 120px; height: 120px; margin: 20px auto 25px;">
+            <div id="pfp-container" onclick="document.getElementById('pfp-upload').click()" 
+                 style="width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--accent-primary); overflow: hidden; cursor: pointer; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px var(--accent-glow); transition: 0.3s transform;">
+                
+                <img id="pfp-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                <i id="pfp-placeholder" data-lucide="user" style="width: 60px; height: 60px; color: var(--accent-primary); opacity: 0.8;"></i>
+            </div>
+            
+            <div style="position: absolute; bottom: 5px; right: 5px; background: var(--accent-primary); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 3px solid #0f172a; pointer-events: none;">
+                <i data-lucide="camera" style="width: 16px; height: 16px; color: #000;"></i>
+            </div>
+            
+            <input type="file" id="pfp-upload" accept="image/*" style="display: none;" onchange="handlePfpUpload(event)">
+        </div>
+
+        <div style="text-align: center; margin-bottom: 25px;">
+            <h2 id="profile-name-display" style="font-family:'Space Grotesk'; margin-bottom: 5px; letter-spacing: 3px; color: var(--text-high); text-transform: uppercase;">USER_IDENTITY</h2>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span style="width: 8px; height: 8px; background: #4ade80; border-radius: 50%; box-shadow: 0 0 10px #4ade80;"></span>
+                <p style="font-size: 0.65rem; color: var(--accent-primary); letter-spacing: 2px; font-weight: bold;">ENCRYPTED SESSION ACTIVE</p>
+            </div>
+        </div>
+
+        <div style="text-align: left; background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid var(--border-glass); margin-bottom: 25px;">
+            <label style="font-size: 0.55rem; color: var(--accent-primary); display: block; margin-bottom: 5px; letter-spacing: 1px;">SYSTEM ALIAS</label>
+            <div id="display-alias" style="font-family: 'Fira Code'; font-size: 0.85rem; color: var(--text-high); margin-bottom: 15px;">---</div>
+            
+            <label style="font-size: 0.55rem; color: var(--accent-primary); display: block; margin-bottom: 5px; letter-spacing: 1px;">ENCRYPTION PROTOCOL</label>
+            <div style="font-family: 'Fira Code'; font-size: 0.85rem; color: #4ade80;">AES-256 / RSA-4096</div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <label style="font-size: 0.6rem; color: var(--accent-primary); display: block; margin-bottom: 15px; letter-spacing: 2px; text-align: center; font-weight: bold;">DIRECT NODE ACCESS</label>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                <div onclick="bypassAndShow('chatbot')" class="nav-node">
+                    <i data-lucide="brain-circuit"></i>
+                    <span>AI HUB</span>
+                </div>
+                <div onclick="bypassAndShow('communication')" class="nav-node">
+                    <i data-lucide="message-square"></i>
+                    <span>COMM</span>
+                </div>
+                <div onclick="bypassAndShow('cloud')" class="nav-node">
+                    <i data-lucide="hard-drive"></i>
+                    <span>CLOUD</span>
+                </div>
+                <div onclick="bypassAndShow('links')" class="nav-node">
+                    <i data-lucide="external-link"></i>
+                    <span>LINKS</span>
+                </div>
+                <div onclick="bypassAndShow('code')" class="nav-node">
+                    <i data-lucide="code-2"></i>
+                    <span>CODE</span>
+                </div>
+                <div onclick="backToHub()" class="nav-node" style="border-color: var(--accent-primary); background: rgba(56, 189, 248, 0.1);">
+                    <i data-lucide="layout-grid" style="color: var(--accent-primary);"></i>
+                    <span style="color: var(--accent-primary);">CORE</span>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="logout()" style="width: 100%; padding: 14px; background: rgba(255, 95, 86, 0.1); border: 1px solid #ff5f56; color: #ff5f56; border-radius: 10px; cursor: pointer; font-family: 'Space Grotesk'; font-weight: 700; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+            TERMINATE SESSION
+        </button>
+    </div>
+
+    <style>
+        .nav-node {
+            background: rgba(255,255,255,0.03);
+            padding: 12px 5px;
+            border-radius: 10px;
+            border: 1px solid var(--border-glass);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-node i {
+            width: 20px;
+            height: 20px;
+            color: var(--text-high);
+            opacity: 0.8;
+        }
+        .nav-node span {
+            font-size: 0.55rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .nav-node:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: var(--accent-primary);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .nav-node:hover i {
+            color: var(--accent-primary);
+            opacity: 1;
+        }
+    </style>
+</div>
+    <div id="ai-interface">
+        <aside id="history-sidebar">
+            <div class="markan-logo" style="justify-content: flex-start; margin-bottom: 30px; font-size: 0.9rem;">
+                <div class="logo-icon" style="width:25px; height:25px; font-size:0.7rem;">M</div>
+                <div>MARKAN AI</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:25px; cursor:pointer; font-size:0.8rem; opacity:0.6" onclick="backToHub()">
+                <i data-lucide="chevron-left" style="width:16px"></i> <span>Dashboard Hub</span>
+            </div>
+            <div id="history-list"></div>
+            <button onclick="clearHistory()" style="margin-top:auto; background:transparent; border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4); padding:10px; border-radius:10px; cursor:pointer; font-size:0.7rem">Purge History</button>
+        </aside>
+        <main class="chat-container">
+            <header>
+                <div style="font-size: 1.1rem; font-family: 'Space Grotesk'; font-weight: 700;">SYSTEM <span style="color:var(--accent-primary)">ACTIVE</span></div>
+                <div id="user-display" style="font-size:0.65rem; opacity: 0.5;"></div>
+            </header>
+            <div id="chat-history"></div>
+            <div class="input-area">
+                <div class="input-box" style="position: relative;">
+    <input type="text" id="user-input" class="chat-input" placeholder="Type or speak a physics question..." onkeypress="if(event.key==='Enter') sendMessage()">
+
+		<button id="omega-btn" class="icon-btn" onclick="toggleOmegaPage()" title="Omega Interface">
+        <i data-lucide="omega"></i>
+    </button>
+						 
+    <button id="mic-btn" onclick="toggleVoice()" style="background:transparent; border:none; color:var(--accent-primary); cursor:pointer; padding: 0 10px; display: flex; align-items: center;">
+        <i data-lucide="mic" id="mic-icon"></i>
+    </button>
+
+    <button onclick="sendMessage()" style="background:var(--accent-primary); color:#000; border:none; border-radius:10px; padding:0 20px; cursor:pointer; font-weight:700">SEND</button>
+    
+    <div id="voice-status" style="display:none; position:absolute; top:-30px; left:20px; font-size:0.7rem; color:var(--accent-primary); letter-spacing:1px; animation: pulse 1.5s infinite;">
+        LISTENING...
+    </div>
+</div>
+            </div>
+        </main>
+    </div>
+	
+<div id="omega-screen">
+    <div id="omega-falling-container"></div>
+			 		 <button class="exit-sub-btn" onclick="exitOmegaToChat()"> EXIT OMEGA</button>
+
+		
+    <div id="omega-menu-container">
+
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="font-family: 'Space Grotesk'; letter-spacing: 8px; color: var(--accent-primary);">OMEGA INTERFACE</h1>
+            <p style="opacity: 0.5; font-size: 0.8rem; letter-spacing: 2px;">ADVANCED NEURAL MODULES</p>
+        </div>
+
+
+        <button class="omega-big-btn" onclick="openOmegaSub('visual-query-page')">
+            <span>Visual Query</span>
+            <i data-lucide="eye"></i>
+        </button>
+
+        <button class="omega-big-btn" onclick="openOmegaSub('automethod-page')">
+            <span>Automethod Exam</span>
+            <i data-lucide="cpu"></i>
+        </button>
+
+        <button class="omega-big-btn" onclick="openOmegaSub('model-gen-page')">
+            <span>2D/3D Model Generator</span>
+            <i data-lucide="layers"></i>
+        </button>
+    </div>
+
+   <div id="visual-query-page" class="omega-sub-page">
+    <button class="exit-sub-btn" onclick="closeOmegaSub('visual-query-page')">BACK TO OMEGA</button>
+
+    <div class="visual-container">
+        <h2 style="font-family:'Space Grotesk'; color:var(--accent-primary); letter-spacing:4px; margin-bottom:40px;">VISUAL QUERY</h2>
+
+        <div class="big-camera-trigger" onclick="openCamera()">
+            <i data-lucide="camera" style="width: 60px; height: 60px;"></i>
+        </div>
+
+        <button onclick="document.getElementById('photo-upload-input').click()" class="generate-btn" style="background:transparent; border:1px solid var(--accent-primary); color:var(--accent-primary); font-size:0.8rem; padding:10px 20px; width:auto; margin-bottom:20px;">
+            <i data-lucide="image" style="margin-right:8px;"></i> PHOTO UPLOAD
+        </button>
+        <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" onchange="handleImageFile(this)">
+
+        <div class="visual-preview-area">
+            <span id="preview-placeholder" style="opacity:0.4;">NO IMAGE CAPTURED</span>
+            <img id="captured-image-preview" src="" alt="preview">
+            <video id="camera-feed" style="display:none; width:100%; border-radius:15px;"></video>
+        </div>
+
+        <div class="visual-input-group">
+            <input type="text" id="visual-question" class="visual-query-input" placeholder="Ask about the photo... (e.g. Color of the dog?)">
+            <button class="generate-btn" onclick="processVisualQuery()">
+                DESCRIBE <i data-lucide="eye" style="margin-left:8px;"></i>
+            </button>
+        </div>
+
+        <div id="visual-result" style="margin-top:20px; font-size:0.9rem; line-height:1.6; color:var(--text-high); background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; display:none;"></div>
+    </div>
+</div>
+
+   <div id="automethod-page" class="omega-sub-page">
+    <button class="exit-sub-btn" onclick="closeOmegaSub('automethod-page')">BACK TO OMEGA</button>
+
+    <div class="omega-sub-content">
+        <div class="exam-control-panel">
+            <h2 style="font-family: 'Space Grotesk'; margin-bottom: 30px; letter-spacing: 4px;">AUTOMATED EXAM</h2>
+            
+            <input type="file" id="pdf-input" accept="application/pdf" style="display: none;" onchange="handleFileSelect(this)">
+
+            <div id="pdf-upload-zone" onclick="document.getElementById('pdf-input').click()">
+                <i data-lucide="file-up"></i>
+                <span id="upload-status" style="font-size: 0.9rem; opacity: 0.7;">Click to Upload PDF Source</span>
+                <div id="file-name-display" style="font-size: 0.8rem; color: var(--accent-primary); margin-top: 5px; font-weight: 700;"></div>
+            </div>
+
+            <div class="exam-input-group">
+                <label>Question Quantity</label>
+                <input type="number" id="question-count" class="exam-input" placeholder="e.g. 10" min="1" max="50">
+            </div>
+
+            <button class="generate-btn" id="main-gen-btn" onclick="startExamGeneration()">
+                <span>GENERATE EXAM</span>
+                <i data-lucide="zap"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div id="exam-loading" style="display:none; position:fixed; inset:0; background:rgba(2,6,23,0.9); z-index:2000; flex-direction:column; align-items:center; justify-content:center;">
+        <div class="spinner"></div>
+        <p style="margin-top:20px; color:var(--accent-primary); font-family:'Space Grotesk'; letter-spacing:3px;">NEURAL PROCESSING...</p>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+	<div id="incoming-call-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(15px);">
+    <div class="pulse-ring" style="position:absolute; width:200px; height:200px; border-radius:50%; border:2px solid var(--accent-primary); animation: ripple 2s infinite;"></div>
+    <div style="width:120px; height:120px; background:var(--bg-deep); border-radius:50%; border:4px solid var(--accent-primary); display:flex; align-items:center; justify-content:center; z-index:2; margin-bottom:30px;">
+        <img id="caller-pfp-img" src="" style="width:100%; height:100%; border-radius:50%; object-fit:cover; opacity:0.8;">
+    </div>
+    <h2 id="incoming-caller-name" style="font-family:'Space Grotesk'; font-size:2rem; letter-spacing:3px; margin-bottom:10px;">INCOMING CALL</h2>
+    <p style="font-family:'Fira Code'; color:var(--accent-primary); animation:pulse 1s infinite;">ESTABLISHING NEURAL LINK...</p>
+    
+    <div style="display:flex; gap:40px; margin-top:50px; z-index:2;">
+        <button onclick="declineIncomingCall()" style="width:70px; height:70px; border-radius:50%; border:none; background:#ef4444; color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.3s transform;">
+            <i data-lucide="phone-off" style="width:30px; height:30px;"></i>
+        </button>
+        <button onclick="acceptIncomingCall()" style="width:70px; height:70px; border-radius:50%; border:none; background:#22c55e; color:black; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.3s transform; box-shadow:0 0 30px #22c55e;">
+            <i data-lucide="phone" style="width:30px; height:30px;"></i>
+        </button>
+    </div>
+</div>
+
+<style>
+@keyframes ripple {
+    0% { transform:scale(1); opacity:1; }
+    100% { transform:scale(2.5); opacity:0; }
+}
+</style>
+	
+
+    <script>
+
+let db;
+const dbRequest = indexedDB.open("MarkanVaultDB", 1);
+
+dbRequest.onupgradeneeded = (e) => {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains("files")) {
+        db.createObjectStore("files", { keyPath: "id", autoIncrement: true });
+    }
+};
+
+dbRequest.onsuccess = (e) => { 
+    db = e.target.result; 
+    console.log("Database initialized");
+};
+		 
+async function saveToDB(fileData) {
+    const tx = db.transaction("files", "readwrite");
+    const store = tx.objectStore("files");
+    store.add(fileData);
+    return tx.complete;
+}
+        lucide.createIcons();
+        let isSignUp = false;
+        let currentUser = localStorage.getItem('logged_in_user') || "";
+
+        if (currentUser) { showDashboard(); }
+
+        function createFallingM() {
+            const container = document.getElementById('falling-container');
+            if (!container) return;
+            const m = document.createElement('div');
+            m.className = 'falling-m';
+            m.innerText = 'M';
+            m.style.left = Math.random() * 100 + "vw";
+            m.style.animationDuration = (Math.random() * 5 + 7) + "s";
+            container.appendChild(m);
+            if (container.children.length > 250) container.removeChild(container.firstChild);
+        }
+        setInterval(createFallingM, 100);
+
+function toggleAuthMode() {
+            isSignUp = !isSignUp;
+            const btn = document.querySelector('.auth-btn');
+            const link = document.getElementById('toggle-text');
+            const sub = document.getElementById('auth-subtitle');
+            
+            if (isSignUp) {
+                link.innerText = "Authorized User? Access Core";
+                btn.innerText = "SIGN IN TO CORE";
+                if(sub) sub.innerText = "INITIALIZE NEW NEURAL LINK";
+            } else {
+                link.innerText = "New Intelligence? Initialize Account";
+                btn.innerText = "LOGIN TO CORE";
+                if(sub) sub.innerText = "CORE NEURAL INTERFACE";
+            }
+        }
+
+        async function handleAuth() {
+            const user = document.getElementById('auth-user').value.trim();
+            const pass = document.getElementById('auth-pass').value.trim();
+            if (!user || !pass) return;
+
+            const scanBar = document.getElementById('scan-bar');
+            if (scanBar) {
+                scanBar.style.display = 'block';
+                scanBar.style.animation = 'scanning 1s linear infinite';
+            }
+            
+            await new Promise(r => setTimeout(r, 1000));
+            if (scanBar) scanBar.style.display = 'none';
+
+            if (isSignUp) {
+                localStorage.setItem(`pw_${user}`, pass);
+                alert("Neural link established. Please login.");
+                toggleAuthMode();
+            } else {
+                // Check credentials in LocalStorage
+                if (localStorage.getItem(`pw_${user}`) === pass) {
+                    currentUser = user;
+                    localStorage.setItem('logged_in_user', user);
+                    showDashboard();
+                } else { 
+                    alert("Access Denied: Invalid Security Key."); 
+                }
+            }
+        }
+
+        function showDashboard() {
+            document.querySelectorAll('#auth-screen, #ai-interface, .placeholder-screen').forEach(el => el.style.display = 'none');
+            document.getElementById('dashboard').style.display = 'flex';
+            lucide.createIcons();
+        }
+
+        let pendingModule = ""; 
+		 
+		 
+async function showModule(module) {
+    if (module === 'communication' || module === 'cloud' || module === 'profile') {
+        pendingModule = module; 
+        document.getElementById('security-modal').style.display = 'flex';
+        document.getElementById('modal-module-name').innerText = `VERIFY KEY FOR: ${module.toUpperCase()}`;
+        document.getElementById('modal-password-input').value = '';
+        document.getElementById('modal-password-input').focus();
+        return;
+    }
+
+    
+    document.querySelectorAll('#dashboard, #ai-interface, .placeholder-screen, #code-screen, #links-screen, #profile-screen').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    
+    if (module === 'chatbot') {
+        document.getElementById('ai-interface').style.display = 'grid';
+        document.getElementById('user-display').innerText = `USER: ${currentUser.toUpperCase()}`;
+        loadHistory();
+    } else if (module === 'code') {
+        document.getElementById('code-screen').style.display = 'flex';
+        loadSavedProject(); //
+    } else {
+        const screen = document.getElementById(module + '-screen');
+        if(screen) {
+            screen.style.display = 'flex';
+        }
+    }
+    
+    lucide.createIcons();
+}
+function verifyModuleAccess() {
+    const input = document.getElementById('modal-password-input');
+    const correctPass = localStorage.getItem(`pw_${currentUser}`); 
+
+    if (input.value === correctPass && correctPass !== null) {
+        const target = pendingModule;
+        
+        closeSecurityModal();
+        
+        document.querySelectorAll('#dashboard, #ai-interface, .placeholder-screen, #code-screen, #links-screen, #profile-screen').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        const screen = document.getElementById(target + '-screen');
+        if(screen) {
+            screen.style.display = 'flex';
+            
+            if (target === 'cloud') {
+                loadVault(); 
+            } else if (target === 'profile') {
+                loadProfile();
+            }
+            
+            lucide.createIcons();
+        }
+        
+        pendingModule = "";
+    } else {
+        document.getElementById('modal-error').style.display = 'block';
+    }
+}
+		 
+function closeSecurityModal() {
+    document.getElementById('security-modal').style.display = 'none';
+    
+    document.getElementById('modal-password-input').value = '';
+    document.getElementById('modal-error').style.display = 'none';
+    pendingModule = "";
+
+    backToHub(); 
+}
+        function backToHub() { showDashboard(); }
+        function logout() { localStorage.removeItem('logged_in_user'); location.reload(); }
+
+        function clearHistory() { localStorage.removeItem(`history_${currentUser}`); loadHistory(); }
+
+        function saveToHistory(text) {
+            let history = JSON.parse(localStorage.getItem(`history_${currentUser}`) || "[]");
+            history.unshift(text); if(history.length > 15) history.pop();
+            localStorage.setItem(`history_${currentUser}`, JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const list = document.getElementById('history-list');
+            const history = JSON.parse(localStorage.getItem(`history_${currentUser}`) || "[]");
+            list.innerHTML = history.map(item => `<div class="history-item" style="padding:10px; cursor:pointer; font-size:0.7rem; opacity:0.6; border-bottom:1px solid rgba(255,255,255,0.05)" onclick="document.getElementById('user-input').value='${item.replace(/'/g, "\\'")}'; sendMessage();">${item.substring(0,25)}...</div>`).join('');
+        }
+
+        function addMessage(text, className, save = true) {
+            const historyDiv = document.getElementById('chat-history');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg ${className}`;
+            msgDiv.innerHTML = text.replace(/\n/g, '<br>');
+            historyDiv.appendChild(msgDiv);
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+            if (window.MathJax) MathJax.typesetPromise();
+            if(save && className === 'msg-user') saveToHistory(text);
+        }
+
+       async function sendMessage() {
+    const input = document.getElementById('user-input');
+    const text = input.value.trim();
+    if(!text) return;
+
+   
+    if (text.toLowerCase().startsWith("open ")) {
+        const site = text.toLowerCase().replace("open ", "").trim();
+        addMessage(`Opening ${site}...`, 'msg-ai', false);
+        
+        let url = "";
+        if (site === "youtube") url = "https://www.youtube.com";
+        else if (site === "google") url = "https://www.google.com";
+        else if (site === "github") url = "https://www.github.com";
+        else if (site.includes(".")) url = "https://" + site; 
+        else url = `https://www.google.com/search?q=${site}`; 
+
+        window.open(url, '_blank');
+        input.value = '';
+        return; 
+    }
+
+    addMessage(text, 'msg-user');
+    input.value = '';
+    
+    const loading = document.createElement('div');
+    loading.className = 'msg msg-ai';
+    loading.innerText = "...";
+    document.getElementById('chat-history').appendChild(loading);
+
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { 
+                "Authorization": "Bearer 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", 
+                "Content-Type": "application/json" 
+            },
+            body: JSON.stringify({
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    { "role": "system", "content": `You are Markan AI, a physics partner for ${currentUser}. Created by Abenezer Ketema.` },
+                    { "role": "user", "content": text }
+                ],
+                "temperature": 0.8
+            })
+        });
+        const data = await response.json();
+        loading.remove();
+        addMessage(data.choices[0].message.content, 'msg-ai', false);
+    } catch (e) { 
+        loading.innerText = "Connection error."; 
+    }
+}
+
+		 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+let isListening = false;
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+        isListening = true;
+        document.getElementById('mic-icon').style.color = '#ff5f56';
+        document.getElementById('voice-status').style.display = 'block';
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('user-input').value = transcript;
+        
+        setTimeout(() => {
+            sendMessage();
+            stopVoice();
+        }, 500);
+    };
+
+    recognition.onerror = () => stopVoice();
+    recognition.onend = () => stopVoice();
+}
+
+function toggleVoice() {
+    if (!recognition) {
+        alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+        return;
+    }
+    isListening ? stopVoice() : recognition.start();
+}
+
+function stopVoice() {
+    if (recognition) recognition.stop();
+    isListening = false;
+    document.getElementById('mic-icon').style.color = 'var(--accent-primary)';
+    document.getElementById('voice-status').style.display = 'none';
+}
+
+	
+function markanSpeak(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+}
+
+function startLinkVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert("Voice features not supported.");
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    
+    const btn = document.getElementById('link-mic-btn');
+    const status = document.getElementById('link-voice-status');
+
+    recognition.onstart = () => {
+        btn.style.borderColor = "#ff5f56";
+        status.style.display = "block";
+        status.innerText = "MARKAN IS LISTENING...";
+    };
+
+    recognition.onresult = (event) => {
+        let transcript = event.results[0][0].transcript.toLowerCase().trim();
+        let query = transcript.replace("open ", "");
+        
+        let url = "";
+
+        if (query.includes(".") && !query.includes(" ")) {
+            url = `https://${query}`;
+            markanSpeak(`Opening ${query}`);
+        } 
+        else {
+            if (!query.includes(" ")) {
+                url = `https://www.${query}.com`;
+                markanSpeak(`Navigating to ${query} dot com`);
+            } else {
+                url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                markanSpeak(`Searching the web for ${query}`);
+            }
+        }
+
+        setTimeout(() => { window.open(url, '_blank'); }, 1000);
+    };
+
+    recognition.onend = () => {
+        btn.style.borderColor = "var(--accent-primary)";
+        status.style.display = "none";
+    };
+
+    recognition.start();
+}
+		 function processManualLink() {
+    let val = document.getElementById('manual-url').value.trim().toLowerCase();
+    if (!val) return;
+    
+    let url = val.includes(".") ? `https://${val}` : `https://www.google.com/search?q=${val}`;
+    markanSpeak("Executing manual override.");
+    window.open(url, '_blank');
+}
+		 function goHome() {
+    document.querySelectorAll('.placeholder-screen, #ai-interface, #code-screen, #links-screen').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    document.getElementById('dashboard').style.display = 'flex';
+    
+    if(document.getElementById('link-voice-status')) {
+        document.getElementById('link-voice-status').style.display = 'none';
+    }
+    
+    lucide.createIcons(); 
+}
+function persistCode() {
+    const code = document.getElementById('editor-textarea').value;
+    localStorage.setItem(`saved_code_${currentUser}`, code);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (currentUser) {
+        const savedCode = localStorage.getItem(`saved_code_${currentUser}`);
+        if (savedCode) document.getElementById('editor-textarea').value = savedCode;
+    }
+});
+
+function runCode() {
+    const code = document.getElementById('editor-textarea').value;
+    const newWindow = window.open();
+    if (code.includes("<html") || code.includes("<!DOCTYPE")) {
+        newWindow.document.write(code);
+    } else {
+        newWindow.document.write(`<pre style="background:#0e1117; color:white; padding:20px; font-family:monospace;">${code}</pre>`);
+    }
+    newWindow.document.close();
+}
+
+function createNewProject() {
+    const code = document.getElementById('editor-textarea').value;
+    if (!code) return alert("Editor is empty.");
+
+    const fileName = prompt("Enter filename with extension (e.g., index.html, script.py, styles.css):", "project.html");
+    
+    if (fileName) {
+        const blob = new Blob([code], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        
+        if (confirm("Project saved! Clear editor for a new start?")) {
+            document.getElementById('editor-textarea').value = "";
+            persistCode();
+        }
+    }
+}
+document.getElementById('editor-textarea').addEventListener('input', () => {
+    const code = document.getElementById('editor-textarea').value;
+    localStorage.setItem(`saved_code_${currentUser}`, code);
+});
+
+function loadSavedProject() {
+    if (currentUser) {
+        const savedCode = localStorage.getItem(`saved_code_${currentUser}`);
+        if (savedCode) document.getElementById('editor-textarea').value = savedCode;
+    }
+}
+
+const originalShowModule = showModule;
+showModule = async function(module) {
+    await originalShowModule(module);
+    if (module === 'code') loadSavedProject();
+};
+
+function runCode() {
+    const code = document.getElementById('editor-textarea').value;
+    const newWindow = window.open();
+    if (code.includes("<html") || code.includes("<!DOCTYPE")) {
+        newWindow.document.write(code);
+    } else {
+        newWindow.document.write(`<body style="background:#0d1117; color:#e6edf3; padding:30px; font-family:monospace;"><pre>${code.replace(/</g, "&lt;")}</pre></body>`);
+    }
+    newWindow.document.close();
+}
+
+function createNewProject() {
+    if (confirm("Create a new project? This will clear the current editor. (Make sure you have downloaded your work first!)")) {
+        document.getElementById('editor-textarea').value = "";
+        document.getElementById('file-indicator').innerText = "NEW_PROJECT.txt";
+        localStorage.removeItem(`saved_code_${currentUser}`);
+    }
+}
+
+function downloadFile() {
+    const code = document.getElementById('editor-textarea').value;
+    if (!code) {
+        alert("Cannot download an empty file.");
+        return;
+    }
+
+    const fileName = prompt("Enter filename with extension (e.g., index.html, logic.py):", "script.txt");
+    
+    if (fileName) {
+        document.getElementById('file-indicator').innerText = fileName.toUpperCase();
+        const blob = new Blob([code], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        
+        localStorage.setItem(`saved_code_${currentUser}`, code);
+    }
+}
+const editor = document.getElementById('editor-textarea');
+
+editor.addEventListener('keydown', (e) => {
+    const pairs = {
+        '(': ')',
+        '[': ']',
+        '{': '}',
+        '"': '"',
+        "'": "'",
+		  '<': '>',
+		  '|': '|',
+    };
+
+    if (pairs[e.key]) {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        const val = editor.value;
+        
+        editor.value = val.substring(0, start) + e.key + pairs[e.key] + val.substring(end);
+        
+        editor.selectionStart = editor.selectionEnd = start + 1;
+    }
+});
+function updateSyntax() {
+    const ext = document.getElementById('language-select').value;
+    const indicator = document.getElementById('file-indicator');
+    const editor = document.getElementById('editor-textarea');
+    
+    const currentName = indicator.innerText.split('.')[0];
+    indicator.innerText = `${currentName}.${ext}`;
+
+    const hints = {
+        html: "",
+        py: "# Write your Python logic here",
+        js: "// Initialize JavaScript functions...",
+        css: "/* Define your visual styles */",
+        txt: "// Plain text mode active"
+    };
+    editor.placeholder = hints[ext] || "// Start coding...";
+}
+
+function downloadFile() {
+    const code = document.getElementById('editor-textarea').value;
+    const indicator = document.getElementById('file-indicator').innerText;
+    
+    if (!code) {
+        alert("Editor is empty. Nothing to download.");
+        return;
+    }
+
+    const fileName = prompt("Confirm filename for download:", indicator);
+    
+    if (fileName) {
+        const blob = new Blob([code], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+}
+
+
+async function handleVaultUpload(files) {
+    for (let file of files) {
+        const fileData = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: file, 
+            dateAdded: new Date().toLocaleDateString()
+        };
+        const tx = db.transaction("files", "readwrite");
+        const store = tx.objectStore("files");
+        await store.add(fileData);
+    }
+    loadVault();
+}
+
+function loadVault() {
+    const grid = document.getElementById('vault-grid');
+    if (!grid) return;
+    grid.innerHTML = ""; 
+    let totalBytes = 0;
+
+    if (!db) return;
+
+    const tx = db.transaction("files", "readonly");
+    tx.objectStore("files").openCursor().onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+            totalBytes += cursor.value.size;
+            renderFileItem(cursor.value, cursor.key);
+            cursor.continue();
+        } else {
+            updateVaultStats(totalBytes);
+        }
+    };
+}
+
+function renderFileItem(fileObj, id) {
+    const grid = document.getElementById('vault-grid');
+    const fileURL = URL.createObjectURL(fileObj.data);
+    const item = document.createElement('div');
+    item.className = 'file-item-container';
+    item.style = "background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: 0.3s; cursor: pointer; position: relative; overflow: hidden;";
+
+    item.innerHTML = `
+        <i data-lucide="file" style="color: #00d4ff; width: 40px; height: 40px;"></i>
+        <span style="color: white; font-size: 0.7rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;">${fileObj.name}</span>
+        <div class="file-actions" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 6, 23, 0.95); display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 10px; opacity: 0; transition: 0.3s; backdrop-filter: blur(4px);">
+            <button onclick="window.open('${fileURL}')" style="background:none; border:1px solid #00d4ff; color:#00d4ff; font-size:0.6rem; padding:4px; cursor:pointer;">WATCH</button>
+            <a href="${fileURL}" download="${fileObj.name}" style="background:#00d4ff; color:black; font-size:0.6rem; padding:4px; text-decoration:none; text-align:center; font-weight:bold;">DOWNLOAD</a>
+            <button onclick="deleteFromDB(${id})" style="background:none; border:1px solid #ff5f56; color:#ff5f56; font-size:0.6rem; padding:4px; cursor:pointer;">DELETE</button>
+        </div>
+    `;
+    grid.appendChild(item);
+    lucide.createIcons();
+}
+
+function deleteFromDB(id) {
+    const tx = db.transaction("files", "readwrite");
+    tx.objectStore("files").delete(id);
+    tx.oncomplete = () => loadVault();
+}
+
+function updateVaultStats(totalBytes = 0) {
+    const mbUsed = (totalBytes / (1024 * 1024)).toFixed(1);
+    const countEl = document.getElementById('file-count');
+    const barEl = document.getElementById('storage-bar');
+    if (countEl) countEl.innerText = `USED: ${mbUsed} MB / 500 MB`;
+    if (barEl) barEl.style.width = Math.min((mbUsed / 500) * 100, 100) + "%";
+}
+		 function loadProfile() {
+    const nameDisplay = document.getElementById('profile-name-display');
+    const aliasDisplay = document.getElementById('display-alias');
+    
+    if (currentUser) {
+        nameDisplay.innerText = currentUser.toUpperCase();
+        aliasDisplay.innerText = `MARKAN_OPERATOR_${currentUser.toUpperCase()}`;
+    }
+}
+
+		 function handlePfpUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64Image = e.target.result;
+        
+        // Save to localStorage linked to the current user
+        localStorage.setItem(`pfp_${currentUser}`, base64Image);
+        
+        // Update the UI immediately
+        displayPfp(base64Image);
+    };
+    reader.readAsDataURL(file);
+}
+
+function displayPfp(imageData) {
+    const preview = document.getElementById('pfp-preview');
+    const placeholder = document.getElementById('pfp-placeholder');
+    
+    if (imageData) {
+        preview.src = imageData;
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+    } else {
+        preview.style.display = 'none';
+        placeholder.style.display = 'block';
+    }
+}
+
+function loadProfile() {
+    const nameDisplay = document.getElementById('profile-name-display');
+    const aliasDisplay = document.getElementById('display-alias');
+    
+    if (currentUser) {
+        nameDisplay.innerText = currentUser.toUpperCase();
+        aliasDisplay.innerText = `MARKAN_OPERATOR_${currentUser.toUpperCase()}`;
+        
+        const savedPfp = localStorage.getItem(`pfp_${currentUser}`);
+        displayPfp(savedPfp);
+    }
+}
+		 function bypassAndShow(module) {
+    document.querySelectorAll('#dashboard, #ai-interface, .placeholder-screen, #code-screen, #links-screen, #profile-screen').forEach(el => {
+        el.style.display = 'none';
+    });
+
+    if (module === 'chatbot') {
+        document.getElementById('ai-interface').style.display = 'grid';
+        document.getElementById('user-display').innerText = `USER: ${currentUser.toUpperCase()}`;
+        loadHistory();
+    } else if (module === 'code') {
+        document.getElementById('code-screen').style.display = 'flex';
+        loadSavedProject();
+    } else if (module === 'cloud') {
+        document.getElementById('cloud-screen').style.display = 'flex';
+        loadVault();
+    } else {
+        const screen = document.getElementById(module + '-screen');
+        if(screen) screen.style.display = 'flex';
+    }
+
+    lucide.createIcons();
+}
+		 function openUserInteractions(username, pfpUrl) {
+    const modal = document.getElementById('user-action-modal');
+    document.getElementById('modal-user-name').innerText = username.toUpperCase();
+    document.getElementById('modal-user-pfp').innerHTML = `<img src="https://api.dicebear.com/7.x/bottts/svg?seed=${username}" style="width:100px; height:100px; border-radius:25px; border:3px solid var(--accent-primary)">`;
+    modal.style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeCommModal(e) {
+    if(e.target.classList.contains('comm-modal-overlay')) {
+        document.getElementById('user-action-modal').style.display = 'none';
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		 // --- UPDATED PEERJS & CALL LOGIC ---
+let peer;
+let currentCall;
+let localStream;
+let callTimeoutTimer;
+let incomingCallObject = null;
+const CALL_TIMEOUT_MS = 300000; // 5 Minutes in milliseconds
+
+// 1. Initialize Peer when user logs in (Modified handleAuth)
+// You must call initPeer(user) inside your handleAuth function!
+function initPeer(username) {
+    // Sanitize username to ensure it works as a valid ID (remove spaces)
+    const cleanId = username.replace(/\s+/g, '_').toUpperCase();
+    
+    // Create Peer with the specific Username
+    peer = new Peer(cleanId);
+
+    peer.on('open', (id) => {
+        console.log('My Neural Network ID: ' + id);
+        // Display ID in profile or dashboard if needed
+    });
+
+    peer.on('error', (err) => {
+        console.error("PeerJS Error:", err);
+        if(err.type === 'peer-unavailable') {
+            alert("USER NOT FOUND: The user '" + document.getElementById('modal-user-name').innerText + "' is not currently online.");
+            endCall();
+        }
+    });
+
+    // Handle Incoming Calls (The Receiver Logic)
+    peer.on('call', (call) => {
+        incomingCallObject = call;
+        
+        // 1. Play Ringtone
+        const ringtone = document.getElementById('call-ringtone-logic');
+        ringtone.currentTime = 0;
+        ringtone.play().catch(e => console.log("Audio interaction needed"));
+
+        // 2. Show Incoming Call Modal
+        const modal = document.getElementById('incoming-call-modal');
+        document.getElementById('incoming-caller-name').innerText = call.peer.replace(/_/g, ' ');
+        document.getElementById('caller-pfp-img').src = `https://api.dicebear.com/7.x/bottts/svg?seed=${call.peer}`;
+        modal.style.display = 'flex';
+        lucide.createIcons();
+
+        // 3. Auto-decline if not answered in 5 mins (Receiver side safety)
+        setTimeout(() => {
+            if(document.getElementById('incoming-call-modal').style.display === 'flex') {
+                declineIncomingCall();
+            }
+        }, CALL_TIMEOUT_MS);
+    });
+}
+
+// 2. The Caller Logic (Initiates the call)
+async function initiateCall() {
+    // Get target username from the modal
+    const rawTarget = document.getElementById('modal-user-name').innerText;
+    const targetId = rawTarget.replace(/\s+/g, '_').toUpperCase();
+    
+    if (targetId === currentUser.replace(/\s+/g, '_').toUpperCase()) {
+        alert("You cannot call yourself.");
+        return;
+    }
+
+    try {
+        // Get Local Media
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStream = stream;
+        document.getElementById('local-video').srcObject = stream;
+        
+        // Setup UI for "Calling..." state
+        document.getElementById('user-action-modal').style.display = 'none';
+        document.getElementById('video-call-overlay').style.display = 'flex';
+        document.getElementById('call-username').innerText = "CALLING: " + targetId;
+        
+        // Play Ringtone for caller (dialing sound)
+        const ringtone = document.getElementById('call-ringtone-logic');
+        ringtone.play();
+
+        // Initiate the PeerJS Call
+        const call = peer.call(targetId, stream);
+        handleCallEvents(call);
+
+        // START 5 MINUTE TIMER
+        callTimeoutTimer = setTimeout(() => {
+            alert("NO ANSWER: The user did not pick up within 5 minutes.");
+            endCall();
+        }, CALL_TIMEOUT_MS);
+        
+    } catch (err) {
+        alert("CRITICAL: Camera/Mic Access Denied.");
+        console.error(err);
+    }
+}
+
+// 3. Receiver Actions
+async function acceptIncomingCall() {
+    if(!incomingCallObject) return;
+
+    // Stop Ringtone
+    const ringtone = document.getElementById('call-ringtone-logic');
+    ringtone.pause();
+    
+    // Hide Incoming Modal
+    document.getElementById('incoming-call-modal').style.display = 'none';
+    
+    // Show Video UI
+    document.getElementById('video-call-overlay').style.display = 'flex';
+    document.getElementById('call-username').innerText = "CONNECTED: " + incomingCallObject.peer;
+
+    // Get Local Stream and Answer
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localStream = stream;
+    document.getElementById('local-video').srcObject = stream;
+    
+    incomingCallObject.answer(stream);
+    handleCallEvents(incomingCallObject);
+}
+
+function declineIncomingCall() {
+    const ringtone = document.getElementById('call-ringtone-logic');
+    ringtone.pause();
+    document.getElementById('incoming-call-modal').style.display = 'none';
+    if(incomingCallObject) incomingCallObject.close();
+}
+
+// 4. Handle Active Stream Events
+function handleCallEvents(call) {
+    currentCall = call;
+    
+    // When the OTHER person answers and sends their stream
+    call.on('stream', (remoteStream) => {
+        // Stop the timeout timer because they answered!
+        clearTimeout(callTimeoutTimer);
+        
+        // Stop the ringtone
+        const ringtone = document.getElementById('call-ringtone-logic');
+        ringtone.pause();
+
+        const remoteVideo = document.getElementById('remote-video');
+        remoteVideo.srcObject = remoteStream;
+        
+        // Hide "Waiting" text
+        document.querySelector('.video-placeholder').style.display = 'none';
+        
+        // Start Call Timer UI
+        startCallDurationTimer();
+    });
+
+    call.on('close', endCall);
+    call.on('error', endCall);
+}
+
+// 5. End Call Function (Universal)
+function endCall() {
+    clearTimeout(callTimeoutTimer); // Stop 5 min timer
+    stopCallDurationTimer(); // Stop UI timer
+
+    // Stop Sound
+    const ringtone = document.getElementById('call-ringtone-logic');
+    ringtone.pause();
+    ringtone.currentTime = 0;
+
+    // Stop Streams
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+
+    // Close Peer connection
+    if (currentCall) {
+        currentCall.close();
+    }
+
+    // Reset UI
+    document.getElementById('video-call-overlay').style.display = 'none';
+    document.getElementById('incoming-call-modal').style.display = 'none';
+    document.getElementById('communication-screen').style.display = 'flex';
+    document.getElementById('remote-video').srcObject = null;
+    
+    // Reset placeholders
+    document.querySelector('.video-placeholder').style.display = 'block';
+    document.getElementById('call-timer').innerText = "00:00";
+}
+
+let durationInterval;
+function startCallDurationTimer() {
+    let seconds = 0;
+    const timerEl = document.getElementById('call-timer');
+    clearInterval(durationInterval);
+    durationInterval = setInterval(() => {
+        seconds++;
+        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        timerEl.innerText = `${mins}:${secs}`;
+    }, 1000);
+}
+
+function stopCallDurationTimer() {
+    clearInterval(durationInterval);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		 
+
+
+
+
+
+		 // Function to open/close the Idea Subpage
+function toggleIdeaBox(show) {
+    const overlay = document.getElementById('text-to-code-overlay');
+    overlay.style.display = show ? 'flex' : 'none';
+    
+    // Clear previous interpretations when opening
+    if (show) {
+        document.getElementById('ai-explanation-box').style.display = 'none';
+        document.getElementById('create-btn').style.display = 'none';
+        document.getElementById('user-idea-input').value = '';
+    }
+}
+
+// The "Describe" Function
+async function describeIdea() {
+    const idea = document.getElementById('user-idea-input').value;
+    const descBtn = document.getElementById('describe-btn');
+    const explanationBox = document.getElementById('ai-explanation-box');
+    const explanationText = document.getElementById('ai-explanation-text');
+    const createBtn = document.getElementById('create-btn');
+
+    if (!idea) return alert("Please write your idea first.");
+
+    // Visual feedback while AI "thinks"
+    descBtn.innerHTML = '<i class="loader-spin"></i> INTERPRETING...';
+    descBtn.style.opacity = '0.5';
+    descBtn.disabled = true;
+
+    try {
+        /* This is where we will eventually connect your API. 
+           For now, we simulate the "Generative AI" writing it briefly 
+           and explaining it deeply back to you.
+        */
+        
+        // Simulating AI Response logic
+        setTimeout(() => {
+            explanationText.innerText = "I understand you want to build: " + idea + 
+            "\n\nDeep Analysis: This involves setting up a core logic structure, " +
+            "applying your specific CSS variables for the cyber-glow effect, " +
+            "and ensuring the DOM elements are correctly mapped. Ready to generate?";
+            
+            explanationBox.style.display = 'block';
+            createBtn.style.display = 'flex'; // Show Create button after description
+            
+            descBtn.innerHTML = '<i data-lucide="check"></i> DESCRIBED';
+            lucide.createIcons(); // Refresh icons
+        }, 1500);
+
+    } catch (error) {
+        console.error("AI Description Error:", error);
+        descBtn.innerHTML = 'RETRY DESCRIBE';
+        descBtn.disabled = false;
+    }
+}
+
+
+
+		 const GROQ_API_KEY = "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";
+
+function toggleIdeaBox(show) {
+    const overlay = document.getElementById('text-to-code-overlay');
+    overlay.style.display = show ? 'flex' : 'none';
+    if(show) {
+        document.getElementById('ai-explanation-box').style.display = 'none';
+        document.getElementById('create-btn').style.display = 'none';
+    }
+}
+
+async function describeIdea() {
+    const idea = document.getElementById('user-idea-input').value;
+    const descBtn = document.getElementById('describe-btn');
+    const explanationBox = document.getElementById('ai-explanation-box');
+    const explanationText = document.getElementById('ai-explanation-text');
+    const createBtn = document.getElementById('create-btn');
+
+    if (!idea.trim()) return alert("Please input your idea first.");
+
+    // Loading State
+    descBtn.innerHTML = '<span class="loader-spin"></span> ANALYZING...';
+    descBtn.style.opacity = "0.7";
+    descBtn.disabled = true;
+
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${GROQ_API_KEY.trim()}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile", // Updated to the latest supported model
+                messages: [
+                    {
+                        role: "system", 
+                        content: "You are a senior software architect. When a user gives you an idea, explain it back to them in a deep, professional way. Outline the logic steps and the technical structure needed. Keep it concise but thorough."
+                    }, 
+                    {
+                        role: "user", 
+                        content: idea
+                    }
+                ],
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || "API Connection Failed");
+        }
+
+        const data = await response.json();
+        const aiMessage = data.choices[0].message.content;
+
+        // Display results
+        explanationText.innerText = aiMessage;
+        explanationBox.style.display = 'block';
+        explanationBox.style.animation = "fadeIn 0.8s ease";
+        createBtn.style.display = 'flex';
+        
+        descBtn.innerHTML = '<i data-lucide="check"></i> ANALYSIS COMPLETE';
+        if(window.lucide) lucide.createIcons();
+
+    } catch (error) {
+        console.error("Neural Architect Error:", error);
+        alert("AI Error: " + error.message);
+        descBtn.innerHTML = '<i data-lucide="refresh-cw"></i> RETRY ANALYSIS';
+        descBtn.disabled = false;
+        descBtn.style.opacity = "1";
+    }
+}
+
+
+
+
+
+
+// 1. Function to open the Laboratory (Subpage of Subpage) and start AI generation
+async function startcodingphase() {
+    const aiExplanation = document.getElementById('ai-explanation-text').innerText;
+    const labLayer = document.getElementById('neural-lab-layer');
+    const labArea = document.getElementById('lab-code-area');
+    const labStatus = document.getElementById('lab-status');
+    const createBtn = document.getElementById('create-btn');
+    const charCount = document.getElementById('char-count');
+
+    if (!labLayer || !labArea) return;
+
+    // Transition to Lab
+    labLayer.style.display = "flex";
+    labArea.textContent = "// INITIALIZING NEURAL UPLINK...\n// ESTABLISHING ENCRYPTED STREAM...";
+    labStatus.innerText = "STREAMING...";
+    createBtn.disabled = true;
+
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${GROQ_API_KEY.trim()}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    {role: "system", content: "Expert Coder. Output raw code only. No markdown comments."},
+                    {role: "user", content: `Write code for: ${aiExplanation}`}
+                ],
+                temperature: 0.1
+            })
+        });
+
+        const data = await response.json();
+        let code = data.choices[0].message.content.replace(/```[a-z]*\n/g, '').replace(/```/g, '');
+
+        labArea.textContent = ""; 
+        let i = 0;
+        const interval = setInterval(() => {
+            if (i < code.length) {
+                labArea.textContent += code.charAt(i);
+                charCount.innerText = `${i} CHARS`;
+                labArea.scrollTop = labArea.scrollHeight;
+                i++;
+            } else {
+                clearInterval(interval);
+                labStatus.innerText = "GEN_COMPLETE";
+                document.getElementById('lab-footer-actions').style.display = "block";
+                createBtn.disabled = false;
+            }
+        }, 3); // Faster stream speed
+    } catch (error) {
+        labStatus.innerText = "STREAM_ERROR";
+        labArea.innerHTML = `<span style="color:var(--accent-primary);">FAIL: ${error.message}</span>`;
+    }
+}
+
+function closeLab() {
+    document.getElementById('neural-lab-layer').style.display = "none";
+}
+
+function toggleIdeaBox(show) {
+    const overlay = document.getElementById('text-to-code-overlay');
+    if (overlay) {
+        overlay.style.display = show ? 'flex' : 'none';
+        if (!show) closeLab(); // Ensure lab closes if main overlay closes
+    }
+}
+
+		 function copyLabCode() {
+    const code = document.getElementById('lab-code-area').innerText;
+    navigator.clipboard.writeText(code);
+    const labStatus = document.getElementById('lab-status');
+    const oldText = labStatus.innerText;
+    labStatus.innerText = "COPIED_TO_CLIPBOARD";
+    setTimeout(() => labStatus.innerText = oldText, 2000);
+}
+
+function downloadLabCode() {
+    const code = document.getElementById('lab-code-area').innerText;
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'neural_gen.txt';
+    a.click();
+}
+
+function runLabInNewTab() {
+    const code = document.getElementById('lab-code-area').innerText;
+    
+    if (!code || code.trim() === "") {
+        alert("No code detected. Please wait for the AI to finish writing.");
+        return;
+    }
+
+    // Create a Blob from the code (works for HTML/JS/CSS)
+    const blob = new Blob([code], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Open in a new tab
+    const newWindow = window.open(blobUrl, '_blank');
+    
+    // Optional: Auto-inject into main editor as well for backup
+    document.getElementById('editor-textarea').value = code;
+
+    // Status update
+    const labStatus = document.getElementById('lab-status');
+    labStatus.innerText = "STREAM_LAUNCHED_IN_NEW_TAB";
+    labStatus.style.color = "#38bdf8";
+}
+
+// Ensure icons are re-rendered if necessary
+if (window.lucide) lucide.createIcons();
+
+		 // Add this inside your existing <script> tag
+function toggleOmegaPage() {
+    const chatInterface = document.getElementById('ai-interface');
+    const omegaScreen = document.getElementById('omega-screen');
+
+    if (omegaScreen.style.display === 'flex') {
+        omegaScreen.style.display = 'none';
+        chatInterface.style.display = 'grid'; // Returns to chatbot layout
+    } else {
+        chatInterface.style.display = 'none';
+        omegaScreen.style.display = 'flex';
+        
+        // Refresh Lucide icons so the "Back" arrow shows up
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+}
+		 function createOmegaM() {
+    const container = document.getElementById('omega-falling-container');
+    if (!container || window.getComputedStyle(document.getElementById('omega-screen')).display === 'none') return;
+
+    const m = document.createElement('div');
+    m.classList.add('omega-m');
+    m.innerText = 'M';
+    
+    // Randomize position and speed
+    m.style.left = Math.random() * 100 + 'vw';
+    const duration = Math.random() * 3 + 4; // 4 to 7 seconds
+    m.style.animationDuration = duration + 's';
+    
+    container.appendChild(m);
+
+    // Clean up memory
+    setTimeout(() => {
+        m.remove();
+    }, duration * 1000);
+}
+
+// Start the falling effect specifically for Omega
+// You might want to call this interval only when the screen is shown
+setInterval(createOmegaM, 400);
+
+		 // --- GLOBAL CONFIG ---
+let selectedPdfFile = null;
+const GROQ_KEY = "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";
+
+// Ensure PDF.js Worker is loaded
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+}
+
+// --- CORE FUNCTIONS ---
+
+function handleFileSelect(input) {
+    if (input.files && input.files[0]) {
+        selectedPdfFile = input.files[0];
+        document.getElementById('upload-status').innerText = "SOURCE SECURED";
+        document.getElementById('file-name-display').innerText = selectedPdfFile.name;
+    }
+}
+
+async function startExamGeneration() {
+    const qCountInput = document.getElementById('question-count');
+    const qCount = qCountInput ? qCountInput.value : null;
+    const loading = document.getElementById('exam-loading');
+
+    if (!selectedPdfFile || !qCount) {
+        alert("CRITICAL: Upload PDF and set question count.");
+        return;
+    }
+
+    if (loading) loading.style.display = 'flex';
+
+    try {
+        const arrayBuffer = await selectedPdfFile.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        
+        let fullText = "";
+        const pageLimit = Math.min(pdf.numPages, 10);
+        for (let i = 1; i <= pageLimit; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            fullText += content.items.map(item => item.str).join(" ") + " ";
+        }
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${GROQ_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    {
+                        role: "system",
+                        content: `You are an elite academic system. Generate an HTML Multiple Choice Quiz.
+                        For every question, use this structure:
+                        
+                        <div class="quiz-question" data-correct="[LETTER]" data-explanation="[EXPLANATION]">
+                            <p class="question-text">[Number]. [Question Text]</p>
+                            <label class="option"><input type="radio" name="q[N]" value="A"> A) [Opt A]</label>
+                            <label class="option"><input type="radio" name="q[N]" value="B"> B) [Opt B]</label>
+                            <label class="option"><input type="radio" name="q[N]" value="C"> C) [Opt C]</label>
+                            <label class="option"><input type="radio" name="q[N]" value="D"> D) [Opt D]</label>
+                            <div class="explanation-box" style="display:none;"></div>
+                        </div>
+                        
+                        Replace [EXPLANATION] with a 2-3 sentence explanation of why the correct answer is right.`
+                    },
+                    {
+                        role: "user",
+                        content: `Source Text: ${fullText.substring(0, 15000)} \n\n Generate ${qCount} interactive questions.`
+                    }
+                ],
+                temperature: 0.5
+            })
+        });
+
+        const data = await response.json();
+        displayExamResults(data.choices[0].message.content);
+
+    } catch (err) {
+        console.error(err);
+        alert("Neural Link Error: " + err.message);
+    } finally {
+        if (loading) loading.style.display = 'none';
+    }
+}
+
+function displayExamResults(content) {
+    const resultPage = document.createElement('div');
+    resultPage.id = "exam-result-overlay";
+    // Inline styling for the overlay
+    resultPage.style = "position:fixed; top:0; left:0; width:100%; height:100vh; background:var(--bg-deep); z-index:3000; overflow-y:auto; padding:50px; color:white; font-family:'Outfit';";
+    
+    resultPage.innerHTML = `
+        <div style="max-width:800px; margin:0 auto; background:rgba(255,255,255,0.05); padding:40px; border-radius:20px; border:1px solid var(--accent-primary);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+                <h2 style="font-family:'Space Grotesk'; color:var(--accent-primary);">NEURAL ASSESSMENT</h2>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="exit-sub-btn">CLOSE</button>
+            </div>
+            
+            <form id="quiz-form">
+                <div id="exam-content-area">${content}</div>
+                <button type="button" id="send-quiz-btn" onclick="submitQuiz()" class="generate-btn" style="margin-top:30px; width:100%;">
+                    SEND ANSWERS
+                </button>
+            </form>
+            
+            <div id="score-container" style="display:none; margin-top:30px; padding:30px; border-radius:15px; background:rgba(56,189,248,0.1); text-align:center;">
+                </div>
+        </div>
+    `;
+    document.body.appendChild(resultPage);
+}
+
+function submitQuiz() {
+    const questions = document.querySelectorAll('.quiz-question');
+    let score = 0;
+    const total = questions.length;
+
+    questions.forEach((qDiv) => {
+        const correctAnswer = qDiv.getAttribute('data-correct').trim();
+        const selectedInput = qDiv.querySelector('input[type="radio"]:checked');
+        const options = qDiv.querySelectorAll('.option');
+
+        options.forEach(opt => {
+            const input = opt.querySelector('input');
+            
+            // RESET COLORS
+            opt.classList.remove('correct-choice', 'wrong-choice', 'actual-answer');
+
+            // 1. MARK THE RIGHT ANSWER IN BLUE (Dashed)
+            if (input.value === correctAnswer) {
+                opt.style.border = "2px dashed #38bdf8"; // Blue outline
+                opt.style.color = "#38bdf8";
+            }
+
+            // 2. CHECK USER SELECTION
+            if (selectedInput && input === selectedInput) {
+                if (input.value === correctAnswer) {
+                    opt.style.background = "rgba(34, 197, 94, 0.2)"; // Green background
+                    opt.style.borderColor = "#22c55e";
+                    opt.style.color = "#22c55e";
+                    score++;
+                } else {
+                    opt.style.background = "rgba(239, 68, 68, 0.2)"; // Red background
+                    opt.style.borderColor = "#ef4444";
+                    opt.style.color = "#ef4444";
+                }
+            }
+            
+            // Disable inputs so they can't change after sending
+            input.disabled = true;
+        });
+    });
+
+    // 3. SHOW SCORE
+    const scoreBox = document.getElementById('score-container');
+    scoreBox.style.display = 'block';
+    const percent = Math.round((score / total) * 100);
+    
+    scoreBox.innerHTML = `
+        <h3 style="font-family:'Space Grotesk'; font-size:2rem; margin:0;">SCORE: ${score} / ${total}</h3>
+        <p style="opacity:0.7; letter-spacing:2px;">ACCURACY: ${percent}%</p>
+        <button onclick="window.print()" class="generate-btn" style="background:#22c55e; color:black; margin-top:20px; font-size:0.8rem;">DOWNLOAD PDF REPORT</button>
+    `;
+
+    document.getElementById('send-quiz-btn').style.display = 'none';
+    scoreBox.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Navigation Fixes
+function openOmegaSub(pageId) {
+    document.getElementById(pageId).style.display = 'block';
+    lucide.createIcons();
+}
+
+function closeOmegaSub(pageId) {
+    document.getElementById(pageId).style.display = 'none';
+}
+
+function exitOmegaToChat() {
+    document.getElementById('omega-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'flex';
+}
+
+		 // Configuration
+const VISION_API_KEY = "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";
+
+async function processVisualQuery() {
+    const question = document.getElementById('visual-question').value;
+    const loading = document.getElementById('exam-loading'); // Reusing your existing loading spinner
+
+    if (!currentBase64Image) {
+        alert("CRITICAL: No image detected. Capture or upload a photo.");
+        return;
+    }
+    if (!question) {
+        alert("INPUT REQUIRED: Please ask a question about the photo.");
+        return;
+    }
+
+    // Show loading state
+    if (loading) loading.style.display = 'flex';
+
+    const base64ImageOnly = currentBase64Image.split(',')[1];
+    
+    // Updated 2026 Stable Model IDs (Auto-Fallback)
+    const activeModels = [
+        "llama-3.2-11b-vision-instruct",
+        "llama-3.2-90b-vision-instruct",
+        "meta-llama/llama-4-scout-17b-16e-instruct" // Newest Llama 4
+    ];
+
+    async function tryVisionModel(index) {
+        if (index >= activeModels.length) {
+            throw new Error("All vision modules are currently recalibrating. Please try again in a moment.");
+        }
+
+        const modelId = activeModels[index];
+        try {
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${VISION_API_KEY}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: modelId,
+                    messages: [{
+                        role: "user",
+                        content: [
+                            { type: "text", text: `Task: ${question}. If the image contains a URL or QR code, extract it clearly.` },
+                            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64ImageOnly}` } }
+                        ]
+                    }],
+                    temperature: 0.5,
+                    max_tokens: 1024
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.warn(`Model ${modelId} failed. Trying next...`);
+                return await tryVisionModel(index + 1);
+            }
+
+            return data.choices[0].message.content;
+
+        } catch (err) {
+            return await tryVisionModel(index + 1);
+        }
+    }
+
+    try {
+        const aiResponse = await tryVisionModel(0);
+        // LAUNCH THE SUB-PAGE OVERLAY
+        showVisualResultPage(currentBase64Image, aiResponse);
+    } catch (err) {
+        alert("Neural Link Error: " + err.message);
+    } finally {
+        if (loading) loading.style.display = 'none';
+    }
+}
+
+/** * NEW SUB-PAGE: Displays the AI Answer and Source Image in a Full-Screen Overlay
+ */
+function showVisualResultPage(imageSrc, textResponse) {
+    const overlay = document.createElement('div');
+    overlay.id = "visual-result-overlay";
+    // Using your existing theme variables for styling
+    overlay.style = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+        background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); 
+        z-index: 5000; overflow-y: auto; padding: 40px; color: white;
+        font-family: 'Outfit', sans-serif; animation: fadeIn 0.4s ease;
+    `;
+
+    // Extract links for the action button
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const foundUrls = textResponse.match(urlRegex);
+    const linkBtn = foundUrls ? `
+        <button onclick="window.open('${foundUrls[0]}', '_blank')" class="generate-btn" 
+                style="background:#22c55e; color:black; margin-top:20px; width:100%;">
+            OPEN DETECTED LINK
+        </button>` : '';
+
+    overlay.innerHTML = `
+        <div style="max-width: 1100px; margin: 0 auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px; border-bottom:1px solid rgba(56, 189, 248, 0.2); padding-bottom:20px;">
+                <div>
+                    <h2 style="font-family:'Space Grotesk'; color:var(--accent-primary); letter-spacing:4px; margin:0;">NEURAL SCAN REPORT</h2>
+                    <p style="font-family:'Fira Code'; font-size:0.7rem; opacity:0.6; margin-top:5px;">STATUS: ANALYSIS_COMPLETE // ENCRYPTED_CHANNEL_ACTIVE</p>
+                </div>
+                <button onclick="document.getElementById('visual-result-overlay').remove()" class="exit-sub-btn" style="position:static;">EXIT REPORT</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:40px; align-items: start;">
+                <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:24px; border:1px solid var(--border-glass);">
+                    <p style="font-family:'Fira Code'; font-size:0.65rem; color:var(--accent-primary); margin-bottom:15px; text-transform:uppercase;">Captured_Visual_Data</p>
+                    <img src="${imageSrc}" style="width:100%; border-radius:15px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.15); border:1px solid rgba(56, 189, 248, 0.3);">
+                </div>
+
+                <div style="background:rgba(56, 189, 248, 0.04); padding:35px; border-radius:24px; border:1px solid rgba(56, 189, 248, 0.3); backdrop-filter:blur(10px);">
+                    <p style="font-family:'Fira Code'; font-size:0.65rem; color:var(--accent-primary); margin-bottom:15px; text-transform:uppercase;">AI_Neural_Deduction</p>
+                    <div style="font-size:1.15rem; line-height:1.7; font-weight:300; white-space: pre-wrap;">${textResponse}</div>
+                    
+                    ${linkBtn}
+                    
+                    <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1); display:flex; gap:15px;">
+                        <button onclick="window.print()" class="generate-btn" style="flex:1; background:transparent; border:1px solid white; color:white;">EXPORT PDF</button>
+                        <button onclick="copyToClipboard('${textResponse.replace(/'/g, "\\'")}')" class="generate-btn" style="flex:1; background:var(--accent-primary); color:black;">COPY TEXT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+}
+
+// Simple helper to copy text
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => alert("Analysis copied to neural clipboard."));
+}
+
+async function openCamera() {
+    const video = document.getElementById('camera-feed');
+    const placeholder = document.getElementById('preview-placeholder');
+    const preview = document.getElementById('captured-image-preview');
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "environment", width: 1280, height: 720 } 
+        });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        video.style.objectFit = 'cover';
+        preview.style.display = 'none';
+        placeholder.style.display = 'none';
+        video.play();
+
+        video.onclick = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            currentBase64Image = canvas.toDataURL('image/jpeg', 0.8); // 0.8 quality for faster API transfer
+            preview.src = currentBase64Image;
+            preview.style.display = 'block';
+            video.style.display = 'none';
+            
+            stream.getTracks().forEach(track => track.stop());
+        };
+    } catch (err) {
+        alert("Camera Access Denied. Please ensure you are on HTTPS.");
+    }
+}
+	 </script>
+	
+
+	<div id="video-call-overlay" class="call-overlay">
+    <div class="video-container main-video">
+        <div class="video-placeholder">
+            <i data-lucide="user" style="width: 80px; height: 80px; opacity: 0.2;"></i>
+            <p>WAITING FOR CONNECTION...</p>
+        </div>
+        <video id="remote-video" autoplay playsinline></video>
+    </div>
+
+    <div class="video-container mini-video">
+        <video id="local-video" autoplay playsinline muted></video>
+        <div id="local-video-off" class="video-off-state" style="display:none;">
+            <i data-lucide="video-off"></i>
+        </div>
+    </div>
+
+    <div class="call-status-tag">
+        <div class="pulse-dot"></div>
+        <span id="call-timer">00:00</span>
+        <span style="margin-left: 10px; opacity: 0.5;">|</span>
+        <span id="call-username" style="margin-left: 10px; letter-spacing: 2px;">SECURE LINE</span>
+    </div>
+
+    <div class="call-controls">
+        <button id="toggle-mic" class="control-btn" onclick="toggleMute()">
+            <i data-lucide="mic"></i>
+        </button>
+        
+        <button id="toggle-cam" class="control-btn" onclick="toggleCamera()">
+            <i data-lucide="video"></i>
+        </button>
+
+        <button id="speaker-btn" class="control-btn" onclick="toggleSpeaker()">
+            <i data-lucide="volume-2"></i>
+        </button>
+
+      <button class="control-btn end-call" onclick="endCall()">
+    <i data-lucide="phone-off"></i>
+</button>
+    </div>
+</div>
+
+
+
+<audio id="call-ringtone-logic" loop src="https://www.soundjay.com/phone/phone-calling-1.mp3"></audio>
+	
+
+	<script>
+(function() {
+    const ringtone = document.getElementById('call-ringtone-logic');
+    const callOverlay = document.getElementById('video-call-overlay');
+
+    // 1. "Unlock" audio on any click so the browser allows it to play later
+    document.addEventListener('click', function unlock() {
+        ringtone.play().then(() => {
+            ringtone.pause(); // Play and immediately pause to 'prime' the audio
+            document.removeEventListener('click', unlock);
+        }).catch(e => console.log("Waiting for user interaction..."));
+    }, { once: true });
+
+    // 2. Watch for the call overlay to appear
+    const observer = new MutationObserver(() => {
+        const isVisible = window.getComputedStyle(callOverlay).display === 'flex';
+        
+        // Check if we are still waiting for a connection
+        const statusText = callOverlay.querySelector('.video-placeholder p');
+        const isWaiting = statusText && statusText.innerText.includes("WAITING");
+
+        if (isVisible && isWaiting) {
+            ringtone.currentTime = 0; // Restart sound
+            ringtone.play().catch(err => console.error("Playback failed:", err));
+        } else {
+            // Stop sound when connected or overlay closed
+            ringtone.pause();
+        }
+    });
+
+    observer.observe(callOverlay, { 
+        attributes: true, 
+        attributeFilter: ['style'],
+        childList: true, 
+        subtree: true 
+    });
+})();
+
+		
+</script>
+	
+</body>
+</html>
